@@ -1,0 +1,1 @@
+why do we have a workspace-template instead of hosting this on blob? and practicing the full e2e lifecycle of running claude agent sdk in vercel sandbox?

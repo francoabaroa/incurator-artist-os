@@ -1,0 +1,26 @@
+[
+  {
+    "id": "profile-bootstrap",
+    "title": "Bootstrap artist profile",
+    "description": "Collect artist name, genres, bio, and links, then update profile/artist.json with verified info.",
+    "passes": false
+  },
+  {
+    "id": "task-backlog",
+    "title": "Establish task backlog",
+    "description": "Create initial tasks/backlog.json entries for near-term priorities and confirm tasks/inbox.md is up to date.",
+    "passes": false
+  },
+  {
+    "id": "release-roadmap",
+    "title": "Draft release roadmap",
+    "description": "Add an initial release entry in releases/releases.json with status planning and next actions in tasks/today.md.",
+    "passes": false
+  },
+  {
+    "id": "marketing-approval",
+    "title": "Enable marketing approval workflow",
+    "description": "Ensure marketing/approval.json exists with pending approvals and document how to request approval before posting.",
+    "passes": false
+  }
+]
