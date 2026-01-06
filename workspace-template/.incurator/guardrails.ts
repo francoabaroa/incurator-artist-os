@@ -39,7 +39,14 @@ export function normalizeWorkspacePath(
     ? path.resolve(filePath)
     : path.resolve(workspaceRoot, filePath);
 
-  if (!resolved.startsWith(workspaceRoot)) {
+  // Ensure workspaceRoot has trailing separator for secure comparison
+  // This prevents "/vercel/sandbox/workspacemalicious" from matching "/vercel/sandbox/workspace"
+  const normalizedRoot = workspaceRoot.endsWith(path.sep)
+    ? workspaceRoot
+    : workspaceRoot + path.sep;
+
+  // Path must either be exactly the workspace root or start with workspace root + separator
+  if (resolved !== workspaceRoot && !resolved.startsWith(normalizedRoot)) {
     return null;
   }
 
@@ -75,14 +82,33 @@ export interface RedirectCheckResult {
 }
 
 /**
+ * Strips quoted strings from a command to avoid false positives when checking
+ * for redirects. This prevents attacks like: echo ">> logs/file" > sensitive.txt
+ */
+function stripQuotedStrings(command: string): string {
+  // Remove single-quoted strings (no escapes in single quotes)
+  let result = command.replace(/'[^']*'/g, "''");
+  // Remove double-quoted strings (handle escaped quotes)
+  result = result.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+  // Remove $'...' style strings
+  result = result.replace(/\$'(?:[^'\\]|\\.)*'/g, "''");
+  return result;
+}
+
+/**
  * Checks if a bash command contains file redirections and whether they're allowed.
  */
 export function checkBashRedirect(command: string): RedirectCheckResult {
+  // Strip quoted strings to avoid matching redirects inside quotes
+  // This prevents bypass attacks like: echo ">> logs/file" > sensitive.txt
+  const strippedCommand = stripQuotedStrings(command);
+
   // Check append first, then overwrite (if no append) - order matters to avoid
   // the regex matching within >> as a single >
-  const hasAppendRedirect = /\s*>>\s*/.test(command);
-  const hasOverwriteRedirect = !hasAppendRedirect && /\s*>\s*[^>|&]/.test(command);
-  const hasTee = /\|\s*tee\s+/.test(command);
+  const hasAppendRedirect = /\s*>>\s*/.test(strippedCommand);
+  const hasOverwriteRedirect =
+    !hasAppendRedirect && /\s*>\s*[^>|&]/.test(strippedCommand);
+  const hasTee = /\|\s*tee\s+/.test(strippedCommand);
   const hasRedirect = hasOverwriteRedirect || hasAppendRedirect || hasTee;
 
   if (!hasRedirect) {
@@ -96,15 +122,31 @@ export function checkBashRedirect(command: string): RedirectCheckResult {
     };
   }
 
-  const redirectTarget = command.match(/(?:>>?\s*|tee\s+)([^\s|&;]+)/)?.[1] ?? "";
+  // Extract redirect target from the stripped command
+  const redirectTarget =
+    strippedCommand.match(/(?:>>?\s*|tee\s+)([^\s|&;]+)/)?.[1] ?? "";
 
-  const isAllowAny =
-    ALLOW_ANY_REDIRECT_PREFIXES.some((p) => redirectTarget.startsWith(p)) ||
-    ALLOW_ANY_REDIRECT_PREFIXES.some((p) => redirectTarget.includes(`/${p}`));
+  // Block absolute paths entirely - redirects should only go to workspace-relative paths
+  if (redirectTarget.startsWith("/")) {
+    return {
+      hasRedirect: true,
+      hasOverwriteRedirect,
+      hasAppendRedirect,
+      hasTee,
+      redirectTarget,
+      isAllowed: false,
+    };
+  }
+
+  // Only allow workspace-relative paths that start with allowed prefixes
+  // Do NOT use includes() which would match /tmp/malicious/logs/file
+  const isAllowAny = ALLOW_ANY_REDIRECT_PREFIXES.some((p) =>
+    redirectTarget.startsWith(p)
+  );
 
   const isAllowAppendOnly =
     ALLOW_APPEND_ONLY_TARGETS.includes(redirectTarget) ||
-    ALLOW_APPEND_ONLY_TARGETS.some((p) => redirectTarget.endsWith(`/${p}`));
+    ALLOW_APPEND_ONLY_TARGETS.some((p) => redirectTarget === p);
 
   // Allow:
   // - logs/ and .trace/ redirects (>, >>, tee)

@@ -126,6 +126,15 @@ export async function safeReadFile(relativePath: string): Promise<string | null>
     throw new Error(`Path traversal blocked: ${relativePath}`);
   }
 
+  // Block hidden files except allowlisted directories (consistent with write operations)
+  const allowedHidden = [".index/", ".trace/", ".incurator/", ".claude/"];
+  if (
+    relativePath.startsWith(".") &&
+    !allowedHidden.some((prefix) => relativePath.startsWith(prefix))
+  ) {
+    throw new Error(`Hidden file access blocked: ${relativePath}`);
+  }
+
   try {
     return await fs.readFile(path.join(WORKSPACE_ROOT, relativePath), "utf-8");
   } catch {

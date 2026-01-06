@@ -42,3 +42,28 @@ Currently, there is no authentication middleware, no Clerk integration, and no u
 2. Integrate Clerk middleware (already listed as a technology in `CLAUDE.md`) to validate sessions
 3. Remove trust in user-controllable headers such as `x-user-id` and `x-artist-ids`
 4. If header-trust is required for a reverse proxy setup, add middleware that strips/overrides these headers and document the required proxy configuration
+
+# Vuln 2: Public, Guessable Snapshot Blobs – `src/lib/artist-os/snapshot.ts:80-99`
+
+- **Severity:** High (P1)  
+- **Category:** data_exposure  
+- **Confidence:** 9/10
+
+## Description
+
+Exported artist snapshots are written to a public, guessable blob location, exposing workspace contents without authentication. The snapshot export writes both the tarball and manifest to Vercel Blob with `access: "public"` and deterministic keys:
+
+- `snapshots/${artistId}/workspace-${timestamp}.tar.gz`
+- `snapshots/${artistId}/manifest-${timestamp}.json`
+
+This makes every artist workspace archive world-readable to anyone who can guess an `artist_id` and timestamp, exposing prompts, logs, and artist data with no authentication.
+
+## Evidence / Review Comment
+
+- [P1] Snapshots stored publicly with predictable keys — `src/lib/artist-os/snapshot.ts:80-99`
+
+  > The snapshot export writes both the tarball and manifest to Vercel Blob with `access: "public"` and deterministic keys (`snapshots/${artistId}/workspace-${timestamp}.tar.gz`, manifest `snapshots/${artistId}/manifest-${timestamp}.json`). This makes every artist workspace archive world-readable to anyone who can guess an `artist_id` and timestamp, exposing prompts, logs, and artist data with no authentication. These should be private (or at least use random, unguessable keys) to avoid leaking user workspaces.
+
+## Recommendation
+
+Store snapshots as private (or use random, unguessable keys) so workspace exports are not retrievable without authentication/authorization.
