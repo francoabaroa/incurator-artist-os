@@ -138,15 +138,44 @@ export function checkBashRedirect(command: string): RedirectCheckResult {
     };
   }
 
-  // Only allow workspace-relative paths that start with allowed prefixes
+  // Block path traversal attempts like "logs/../CLAUDE.md"
+  // This prevents escaping allowed directories via ".." segments
+  if (redirectTarget.includes("..")) {
+    return {
+      hasRedirect: true,
+      hasOverwriteRedirect,
+      hasAppendRedirect,
+      hasTee,
+      redirectTarget,
+      isAllowed: false,
+    };
+  }
+
+  // Normalize the path and verify it still starts with an allowed prefix after normalization
+  // This catches edge cases like "logs/./../../secret" that might slip through
+  const normalizedTarget = path.normalize(redirectTarget);
+
+  // After normalization, if path escapes (starts with ..) or becomes absolute, block it
+  if (normalizedTarget.startsWith("..") || path.isAbsolute(normalizedTarget)) {
+    return {
+      hasRedirect: true,
+      hasOverwriteRedirect,
+      hasAppendRedirect,
+      hasTee,
+      redirectTarget,
+      isAllowed: false,
+    };
+  }
+
+  // Only allow workspace-relative paths that start with allowed prefixes AFTER normalization
   // Do NOT use includes() which would match /tmp/malicious/logs/file
   const isAllowAny = ALLOW_ANY_REDIRECT_PREFIXES.some((p) =>
-    redirectTarget.startsWith(p)
+    normalizedTarget.startsWith(p)
   );
 
   const isAllowAppendOnly =
-    ALLOW_APPEND_ONLY_TARGETS.includes(redirectTarget) ||
-    ALLOW_APPEND_ONLY_TARGETS.some((p) => redirectTarget === p);
+    ALLOW_APPEND_ONLY_TARGETS.includes(normalizedTarget) ||
+    ALLOW_APPEND_ONLY_TARGETS.some((p) => normalizedTarget === p);
 
   // Allow:
   // - logs/ and .trace/ redirects (>, >>, tee)
