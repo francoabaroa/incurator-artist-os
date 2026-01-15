@@ -81,7 +81,7 @@ export async function POST(req: Request) {
         await restoreArtistSnapshot(sandbox, artistId);
 
         send("status", { phase: "agent_run_start" } satisfies StatusData);
-        const exitCode = await runAgent(
+        const { exitCode, sessionId } = await runAgent(
           sandbox,
           prompt,
           resume_session_id,
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
         send("status", { phase: "snapshot_export" } satisfies StatusData);
         const manifest = await exportArtistSnapshot(sandbox, artistId);
 
-        send("done", { ok: true, exitCode, manifest });
+        send("done", { ok: true, exitCode, sessionId, manifest });
       } catch (error) {
         hadError = true;
         send("error", { message: String(error) });

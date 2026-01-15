@@ -18,12 +18,19 @@ describe("runAgent", () => {
 
   it("encodes prompt as base64 and passes environment variables", async () => {
     const mockRunCommand = vi.fn().mockResolvedValue({ exitCode: 0 });
+    // Mock readFile to return a session file (simulating runner writing session id)
+    const mockReadFile = vi.fn().mockResolvedValue(
+      (async function* () {
+        yield Buffer.from(JSON.stringify({ sessionId: "test-session-id", createdAt: new Date().toISOString() }));
+      })()
+    );
     const mockSandbox = {
       runCommand: mockRunCommand,
+      readFile: mockReadFile,
     };
 
     const logs: Array<{ stream: string; chunk: string }> = [];
-    const exitCode = await runAgent(
+    const { exitCode, sessionId } = await runAgent(
       mockSandbox as unknown as import("@vercel/sandbox").Sandbox,
       "Hello, Artist OS!",
       undefined,
@@ -31,7 +38,8 @@ describe("runAgent", () => {
     );
 
     expect(exitCode).toBe(0);
-    expect(mockRunCommand).toHaveBeenCalledTimes(1);
+    expect(sessionId).toBe("test-session-id");
+    expect(mockRunCommand).toHaveBeenCalledTimes(2); // Once for agent, once for rm cleanup
 
     const callArgs = mockRunCommand.mock.calls[0][0];
     expect(callArgs.cmd).toBe("bash");
@@ -40,11 +48,19 @@ describe("runAgent", () => {
     );
     expect(callArgs.env.SESSION_ID).toBeDefined();
     expect(callArgs.env.WORKSPACE_ROOT).toBe("/vercel/sandbox/workspace");
+    expect(callArgs.env.CLAUDE_CONFIG_DIR).toBe(
+      "/vercel/sandbox/workspace/.claude-state"
+    );
   });
 
   it("passes resume_session_id when provided", async () => {
     const mockRunCommand = vi.fn().mockResolvedValue({ exitCode: 0 });
-    const mockSandbox = { runCommand: mockRunCommand };
+    const mockReadFile = vi.fn().mockResolvedValue(
+      (async function* () {
+        yield Buffer.from(JSON.stringify({ sessionId: "new-session-id", createdAt: new Date().toISOString() }));
+      })()
+    );
+    const mockSandbox = { runCommand: mockRunCommand, readFile: mockReadFile };
 
     await runAgent(
       mockSandbox as unknown as import("@vercel/sandbox").Sandbox,
@@ -59,9 +75,11 @@ describe("runAgent", () => {
 
   it("returns non-zero exit code on failure", async () => {
     const mockRunCommand = vi.fn().mockResolvedValue({ exitCode: 1 });
-    const mockSandbox = { runCommand: mockRunCommand };
+    // Simulate session file not existing (agent crashed before writing)
+    const mockReadFile = vi.fn().mockRejectedValue(new Error("File not found"));
+    const mockSandbox = { runCommand: mockRunCommand, readFile: mockReadFile };
 
-    const exitCode = await runAgent(
+    const { exitCode, sessionId } = await runAgent(
       mockSandbox as unknown as import("@vercel/sandbox").Sandbox,
       "Fail please",
       undefined,
@@ -69,6 +87,7 @@ describe("runAgent", () => {
     );
 
     expect(exitCode).toBe(1);
+    expect(sessionId).toBeUndefined();
   });
 
   it("streams stdout and stderr to onLog callback", async () => {
@@ -77,30 +96,36 @@ describe("runAgent", () => {
     let capturedStderr: import("stream").Writable | undefined;
 
     const mockRunCommand = vi.fn().mockImplementation(async (opts) => {
-      capturedStdout = opts.stdout;
-      capturedStderr = opts.stderr;
+      // Only capture streams from the first call (agent run, not rm cleanup)
+      if (opts.stdout && !capturedStdout) {
+        capturedStdout = opts.stdout;
+        // Simulate writing to stdout during the command (with newlines for line-buffered output)
+        opts.stdout.write("stdout message\n");
+      }
+      if (opts.stderr && !capturedStderr) {
+        capturedStderr = opts.stderr;
+        // Simulate writing to stderr during the command
+        opts.stderr.write("stderr message\n");
+      }
       return { exitCode: 0 };
     });
 
-    const mockSandbox = { runCommand: mockRunCommand };
+    const mockReadFile = vi.fn().mockResolvedValue(
+      (async function* () {
+        yield Buffer.from(JSON.stringify({ sessionId: "stream-test-session", createdAt: new Date().toISOString() }));
+      })()
+    );
 
-    const promise = runAgent(
+    const mockSandbox = { runCommand: mockRunCommand, readFile: mockReadFile };
+
+    await runAgent(
       mockSandbox as unknown as import("@vercel/sandbox").Sandbox,
       "Test",
       undefined,
       (log) => logs.push(log)
     );
 
-    await promise;
-
-    // Simulate writing to the streams
-    if (capturedStdout) {
-      capturedStdout.write("stdout message");
-    }
-    if (capturedStderr) {
-      capturedStderr.write("stderr message");
-    }
-
+    // Logs should contain complete lines (newlines stripped during buffering)
     expect(logs).toContainEqual({ stream: "stdout", chunk: "stdout message" });
     expect(logs).toContainEqual({ stream: "stderr", chunk: "stderr message" });
   });

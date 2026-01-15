@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/artist-os/admin";
+import { forceReleaseArtistLock } from "@/lib/artist-os/lock";
 import { stopSandboxByArtist, stopSandboxById } from "@/lib/artist-os/sandbox";
 import { ArtistIdSchema } from "@/lib/artist-os/validation";
 
@@ -42,11 +43,23 @@ export async function POST(req: Request) {
   }
 
   let stopped = false;
+  let lockReleased = false;
+
   if (payload.sandbox_id) {
-    stopped = await stopSandboxById(payload.sandbox_id);
+    const result = await stopSandboxById(payload.sandbox_id);
+    stopped = result.stopped;
+    // Release lock for the associated artist when stopping by sandbox_id
+    // Release even if stop failed since this is admin cleanup and sandbox is evicted from cache
+    if (result.artistId) {
+      lockReleased = await forceReleaseArtistLock(result.artistId);
+    }
   } else if (payload.artist_id) {
     stopped = await stopSandboxByArtist(payload.artist_id);
+    // Always release the lock for admin cleanup, even if no sandbox was stopped
+    // The lock is in Redis (shared) but sandbox cache is per-instance, so a
+    // sandbox may exist on another instance that we can't stop from here
+    lockReleased = await forceReleaseArtistLock(payload.artist_id);
   }
 
-  return Response.json({ stopped });
+  return Response.json({ stopped, lockReleased });
 }

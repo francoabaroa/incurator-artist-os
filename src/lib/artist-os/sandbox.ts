@@ -58,17 +58,27 @@ export async function getOrCreateSandbox(artistId: string) {
   };
 }
 
-export async function stopSandboxById(sandboxId: string): Promise<boolean> {
+export interface StopResult {
+  stopped: boolean;
+  artistId?: string;
+}
+
+export async function stopSandboxById(sandboxId: string): Promise<StopResult> {
   const cached = sandboxById.get(sandboxId);
   if (!cached) {
-    return false;
+    return { stopped: false };
   }
 
+  const artistId = cached.artistId;
+  
+  // Always evict from cache when stop is attempted to prevent reuse of
+  // potentially corrupted sandboxes, even if the stop API call fails
   clearTimeout(cached.stopTimer);
-  await safeStop(cached.sandbox);
   sandboxCache.delete(cached.artistId);
   sandboxById.delete(sandboxId);
-  return true;
+  
+  const stopped = await safeStop(cached.sandbox);
+  return { stopped, artistId };
 }
 
 export async function stopSandboxByArtist(artistId: string): Promise<boolean> {
@@ -77,11 +87,14 @@ export async function stopSandboxByArtist(artistId: string): Promise<boolean> {
     return false;
   }
 
+  // Always evict from cache when stop is attempted to prevent reuse of
+  // potentially corrupted sandboxes, even if the stop API call fails
   clearTimeout(cached.stopTimer);
-  await safeStop(cached.sandbox);
   sandboxCache.delete(artistId);
   sandboxById.delete(cached.sandbox.sandboxId);
-  return true;
+  
+  const stopped = await safeStop(cached.sandbox);
+  return stopped;
 }
 
 export function listCachedSandboxes() {
@@ -110,10 +123,12 @@ function markSandboxIdle(entry: CachedSandbox) {
   entry.stopTimer.unref?.();
 }
 
-async function safeStop(sandbox: Sandbox) {
+async function safeStop(sandbox: Sandbox): Promise<boolean> {
   try {
     await sandbox.stop();
+    return true;
   } catch (error) {
     console.warn("Failed to stop sandbox", error);
+    return false;
   }
 }

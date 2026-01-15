@@ -66,6 +66,7 @@ export async function exportArtistSnapshot(
       // Exclude harness code (.incurator, .claude) from artist snapshots for defense-in-depth:
       // If the agent ever modifies harness code, those changes should NOT persist.
       // The harness is always restored fresh from the base snapshot.
+      // Keep .claude-state to preserve session resume data across runs.
       // Also exclude node_modules and .git to prevent bloated snapshots.
       `tar -czf /vercel/sandbox/_export.tar.gz --exclude='.incurator' --exclude='.claude' --exclude='node_modules' --exclude='.git' -C ${WORKSPACE_ROOT} .`,
     ],

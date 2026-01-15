@@ -120,7 +120,7 @@ describe("POST /api/artist-os/query", () => {
     getOrCreateSandbox.mockResolvedValue({ sandbox, release: vi.fn() });
     restoreBaseSnapshot.mockResolvedValue(undefined);
     restoreArtistSnapshot.mockResolvedValue(undefined);
-    runAgent.mockResolvedValue(0);
+    runAgent.mockResolvedValue({ exitCode: 0, sessionId: "test-session-123" });
     exportArtistSnapshot.mockResolvedValue({
       artist_id: "artist_1",
       snapshot_key: "snapshots/artist_1/workspace-1.tar.gz",
@@ -137,6 +137,7 @@ describe("POST /api/artist-os/query", () => {
     const text = await res.text();
     expect(text).toContain("event: status");
     expect(text).toContain("event: done");
+    expect(text).toContain('"sessionId":"test-session-123"');
   });
 
   it("streams error event when agent throws", async () => {
