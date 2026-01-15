@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import StatusTimeline from "./StatusTimeline";
 import type { ConsoleLogEntry } from "../lib/types";
 
@@ -16,6 +16,34 @@ function formatTimestamp(value: string) {
   }
   return date.toLocaleTimeString();
 }
+
+const LogEntry = memo(function LogEntry({ entry }: { entry: ConsoleLogEntry }) {
+  return (
+    <div className="console-log-entry rounded-md border border-transparent bg-white px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-[var(--console-text-muted)]">
+        <span className="font-mono">{formatTimestamp(entry.timestamp)}</span>
+        <span
+          className={`font-mono ${
+            entry.stream === "stdout"
+              ? "text-[var(--console-success)]"
+              : "text-[var(--console-warning)]"
+          }`}
+        >
+          {entry.stream}
+        </span>
+      </div>
+      <pre
+        className={`mt-2 whitespace-pre-wrap text-sm ${
+          entry.stream === "stdout"
+            ? "text-[var(--console-success)]"
+            : "text-[var(--console-warning)]"
+        }`}
+      >
+        {entry.content}
+      </pre>
+    </div>
+  );
+});
 
 export default function StreamViewer({ phase, logs }: StreamViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -89,34 +117,7 @@ export default function StreamViewer({ phase, logs }: StreamViewerProps) {
           ) : (
             <div className="flex flex-col gap-3">
               {logs.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="console-log-entry rounded-md border border-transparent bg-white px-3 py-2"
-                >
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-[var(--console-text-muted)]">
-                    <span className="font-mono">
-                      {formatTimestamp(entry.timestamp)}
-                    </span>
-                    <span
-                      className={`font-mono ${
-                        entry.stream === "stdout"
-                          ? "text-[var(--console-success)]"
-                          : "text-[var(--console-warning)]"
-                      }`}
-                    >
-                      {entry.stream}
-                    </span>
-                  </div>
-                  <pre
-                    className={`mt-2 whitespace-pre-wrap text-sm ${
-                      entry.stream === "stdout"
-                        ? "text-[var(--console-success)]"
-                        : "text-[var(--console-warning)]"
-                    }`}
-                  >
-                    {entry.content}
-                  </pre>
-                </div>
+                <LogEntry key={entry.id} entry={entry} />
               ))}
             </div>
           )}

@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 const PHASES = [
   { id: "sandbox_create", label: "Sandbox" },
   { id: "restore_base", label: "Base Restore" },
@@ -10,7 +12,7 @@ interface StatusTimelineProps {
   phase: string | null;
 }
 
-export default function StatusTimeline({ phase }: StatusTimelineProps) {
+function StatusTimeline({ phase }: StatusTimelineProps) {
   const activeIndex = phase
     ? PHASES.findIndex((item) => item.id === phase)
     : -1;
@@ -69,3 +71,5 @@ export default function StatusTimeline({ phase }: StatusTimelineProps) {
     </div>
   );
 }
+
+export default memo(StatusTimeline);

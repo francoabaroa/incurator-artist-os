@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { memo, useState, type FormEvent } from "react";
 import type { ConsoleQueryParams } from "../lib/types";
 
 interface QueryFormProps {
@@ -11,7 +11,7 @@ interface QueryFormProps {
   latestSessionId?: string;
 }
 
-export default function QueryForm({
+function QueryForm({
   onSubmit,
   onStop,
   isStreaming,
@@ -79,6 +79,7 @@ export default function QueryForm({
           <input
             className="rounded-lg border border-[var(--console-border)] bg-[var(--console-input-bg)] px-3 py-2 text-sm font-medium text-[var(--console-text)] outline-none transition focus:border-[var(--console-accent)]"
             disabled={isStreaming}
+            name="userId"
             onChange={(event) => setUserId(event.target.value)}
             placeholder="user_123"
             required
@@ -90,6 +91,7 @@ export default function QueryForm({
           <input
             className="rounded-lg border border-[var(--console-border)] bg-[var(--console-input-bg)] px-3 py-2 text-sm font-medium text-[var(--console-text)] outline-none transition focus:border-[var(--console-accent)]"
             disabled={isStreaming}
+            name="artistId"
             onChange={(event) => setArtistId(event.target.value)}
             placeholder="user_123_artist_001"
             required
@@ -103,6 +105,7 @@ export default function QueryForm({
         <input
           className="rounded-lg border border-[var(--console-border)] bg-[var(--console-input-bg)] px-3 py-2 text-sm font-medium text-[var(--console-text)] outline-none transition focus:border-[var(--console-accent)] disabled:opacity-60"
           disabled={isStreaming || autoOwnedIds}
+          name="ownedArtistIds"
           onChange={(event) => setOwnedArtistIds(event.target.value)}
           placeholder="artist_a, artist_b"
           value={autoOwnedIds ? artistId : ownedArtistIds}
@@ -114,6 +117,7 @@ export default function QueryForm({
           checked={autoOwnedIds}
           className="h-4 w-4 rounded border border-[var(--console-border)] bg-[var(--console-input-bg)] text-[var(--console-accent)]"
           disabled={isStreaming}
+          name="autoOwnedIds"
           onChange={(event) => setAutoOwnedIds(event.target.checked)}
           type="checkbox"
         />
@@ -125,6 +129,7 @@ export default function QueryForm({
         <textarea
           className="min-h-[120px] rounded-lg border border-[var(--console-border)] bg-[var(--console-input-bg)] px-3 py-2 text-sm font-medium text-[var(--console-text)] outline-none transition focus:border-[var(--console-accent)]"
           disabled={isStreaming}
+          name="prompt"
           onChange={(event) => setPrompt(event.target.value)}
           placeholder="What is in my workspace?"
           required
@@ -140,6 +145,7 @@ export default function QueryForm({
           <input
             className="flex-1 rounded-lg border border-[var(--console-border)] bg-[var(--console-input-bg)] px-3 py-2 text-sm font-medium text-[var(--console-text)] outline-none transition focus:border-[var(--console-accent)]"
             disabled={isStreaming}
+            name="resumeSessionId"
             onChange={(event) => setResumeSessionId(event.target.value)}
             placeholder="session_abc"
             value={resumeSessionId}
@@ -189,3 +195,5 @@ export default function QueryForm({
     </form>
   );
 }
+
+export default memo(QueryForm);

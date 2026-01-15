@@ -1,27 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
-import type { ConsoleLogEntry } from "../lib/types";
+import type { ConsoleLogEntry, ConsoleMessageBlock } from "../lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type TextBlock = { type: "text"; text: string };
-type ToolUseBlock = {
-  type: "tool_use";
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-};
-type ContentBlock = TextBlock | ToolUseBlock;
+type TextBlock = Extract<ConsoleMessageBlock, { type: "text" }>;
+type ToolUseBlock = Extract<ConsoleMessageBlock, { type: "tool_use" }>;
 
 interface ParsedMessage {
   id: string;
   timestamp: string;
   stream: "stdout" | "stderr";
-  blocks: ContentBlock[] | null;
+  blocks: ConsoleMessageBlock[] | null;
   rawContent: string;
 }
 
@@ -151,7 +145,7 @@ function getToolIcon(toolName: string): React.ReactNode {
 // Parsing
 // ─────────────────────────────────────────────────────────────────────────────
 
-function parseLogContent(content: string): ContentBlock[] | null {
+function parseLogContent(content: string): ConsoleMessageBlock[] | null {
   const trimmed = content.trim();
   if (!trimmed.startsWith("[")) return null;
 
@@ -166,7 +160,7 @@ function parseLogContent(content: string): ContentBlock[] | null {
         "type" in first &&
         (first.type === "text" || first.type === "tool_use")
       ) {
-        return parsed as ContentBlock[];
+        return parsed as ConsoleMessageBlock[];
       }
     }
   } catch {
@@ -180,7 +174,10 @@ function parseMessages(logs: ConsoleLogEntry[]): ParsedMessage[] {
     id: log.id,
     timestamp: log.timestamp,
     stream: log.stream,
-    blocks: parseLogContent(log.content),
+    blocks:
+      log.parsedBlocks !== undefined
+        ? log.parsedBlocks
+        : parseLogContent(log.content),
     rawContent: log.content,
   }));
 }
@@ -205,7 +202,11 @@ function formatTimestamp(value: string): string {
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ToolUseBlockComponent({ block }: { block: ToolUseBlock }) {
+const ToolUseBlockComponent = memo(function ToolUseBlockComponent({
+  block,
+}: {
+  block: ToolUseBlock;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -286,9 +287,9 @@ function ToolUseBlockComponent({ block }: { block: ToolUseBlock }) {
       )}
     </div>
   );
-}
+});
 
-function TextBlockComponent({
+const TextBlockComponent = memo(function TextBlockComponent({
   block,
   isStreaming,
 }: {
@@ -302,14 +303,14 @@ function TextBlockComponent({
       </div>
     </div>
   );
-}
+});
 
-function AgentMessage({
+const AgentMessage = memo(function AgentMessage({
   blocks,
   timestamp,
   isStreaming,
 }: {
-  blocks: ContentBlock[];
+  blocks: ConsoleMessageBlock[];
   timestamp: string;
   isStreaming?: boolean;
 }) {
@@ -337,7 +338,7 @@ function AgentMessage({
       </div>
     </div>
   );
-}
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
@@ -350,17 +351,18 @@ export default function MessageHistory({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isPinned, setIsPinned] = useState(true);
 
-  const messages = parseMessages(logs);
-
-  // Filter to only show agent messages (parsed blocks) for this view
-  const agentMessages = messages.filter((m) => m.blocks !== null);
+  const messages = useMemo(() => parseMessages(logs), [logs]);
+  const agentMessages = useMemo(
+    () => messages.filter((m) => m.blocks !== null),
+    [messages]
+  );
 
   useEffect(() => {
     if (!isPinned) return;
     const container = containerRef.current;
     if (!container) return;
     container.scrollTop = container.scrollHeight;
-  }, [messages, isPinned]);
+  }, [agentMessages, isPinned]);
 
   const handleScroll = () => {
     const container = containerRef.current;

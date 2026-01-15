@@ -372,11 +372,23 @@ export default function DebugDrawer({
             <p className="text-xs uppercase tracking-[0.3em] text-[var(--console-text-muted)]">
               Admin Actions
             </p>
-            <div className="mt-4 flex flex-col gap-4">
+            <form
+              className="mt-4 flex flex-col gap-4"
+              onSubmit={(event) => event.preventDefault()}
+            >
+              <input
+                autoComplete="username"
+                className="sr-only"
+                name="adminUsername"
+                tabIndex={-1}
+                type="text"
+              />
               <label className="flex flex-col gap-2 text-[10px] uppercase tracking-[0.3em] text-[var(--console-text-muted)]">
                 Admin Token
                 <input
                   className="rounded-md border border-[var(--console-border)] bg-[var(--console-input-bg)] px-3 py-2 text-xs text-[var(--console-text)] outline-none focus:border-[var(--console-accent)]"
+                  autoComplete="current-password"
+                  name="adminToken"
                   onChange={(event) => setAdminToken(event.target.value)}
                   placeholder="ARTIST_OS_ADMIN_TOKEN"
                   type="password"
@@ -387,6 +399,7 @@ export default function DebugDrawer({
                 Sandbox ID (optional)
                 <input
                   className="rounded-md border border-[var(--console-border)] bg-[var(--console-input-bg)] px-3 py-2 text-xs text-[var(--console-text)] outline-none focus:border-[var(--console-accent)]"
+                  name="sandboxId"
                   onChange={(event) => setSandboxId(event.target.value)}
                   placeholder="sandbox_123"
                   type="text"
@@ -445,7 +458,7 @@ export default function DebugDrawer({
                     : formatPayload(stopState.payload)}
                 </pre>
               </div>
-            </div>
+            </form>
           </section>
         </div>
       </aside>

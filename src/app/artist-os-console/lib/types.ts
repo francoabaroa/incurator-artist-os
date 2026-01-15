@@ -18,6 +18,7 @@ export interface ConsoleLogEntry {
   timestamp: string;
   stream: "stdout" | "stderr";
   content: string;
+  parsedBlocks?: ConsoleMessageBlock[] | null;
 }
 
 export interface ConsoleRunState {
@@ -40,5 +41,14 @@ export interface HistoryEntry {
   resumeSessionId?: string;
   sessionId?: string;
 }
+
+export type ConsoleMessageBlock =
+  | { type: "text"; text: string }
+  | {
+      type: "tool_use";
+      id: string;
+      name: string;
+      input: Record<string, unknown>;
+    };
 
 export type { StatusData, LogData, DoneData, ErrorData };

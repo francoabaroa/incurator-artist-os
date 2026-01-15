@@ -4,6 +4,8 @@
 
 .console-log-entry {
   animation: log-entry 0.18s ease-out;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 64px;
 }
 
 .console-phase-active {
@@ -173,6 +175,8 @@
 /* Message Entry */
 .message-entry {
   animation: message-slide-in 0.25s ease-out;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 140px;
 }
 
 @keyframes message-slide-in {

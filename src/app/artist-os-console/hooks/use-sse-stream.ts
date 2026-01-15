@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { startTransition, useCallback, useRef, useState } from "react";
 import { streamSSE } from "../lib/stream-sse";
 import type {
   ConsoleQueryParams,
   ConsoleLogEntry,
   ConsoleRunState,
+  ConsoleMessageBlock,
   StatusData,
   LogData,
   DoneData,
@@ -13,6 +14,30 @@ import type {
 } from "../lib/types";
 
 const MAX_LOGS = 2000;
+
+function parseLogContent(content: string): ConsoleMessageBlock[] | null {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("[")) return null;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const first = parsed[0];
+      if (
+        first &&
+        typeof first === "object" &&
+        "type" in first &&
+        (first.type === "text" || first.type === "tool_use")
+      ) {
+        return parsed as ConsoleMessageBlock[];
+      }
+    }
+  } catch {
+    // Not valid JSON
+  }
+
+  return null;
+}
 
 function buildErrorMessage(value: unknown, status: number): string {
   if (typeof value === "string") {
@@ -88,9 +113,12 @@ export function useSseStream() {
         signal: controller.signal,
       });
 
+      // Guard: skip state updates if this run was superseded
+      if (abortRef.current !== controller) return;
       setState((current) => ({ ...current, statusCode: response.status }));
 
       if (!response.ok) {
+        if (abortRef.current !== controller) return;
         const errorBody = await response.json().catch(() => null);
         setState((current) => ({
           ...current,
@@ -102,23 +130,32 @@ export function useSseStream() {
       }
 
       for await (const event of streamSSE(response, controller.signal)) {
+        // Guard: skip state updates if a newer run has started
+        if (abortRef.current !== controller) break;
+
         if (event.event === "status") {
           const data = event.data as StatusData;
           setState((current) => ({ ...current, phase: data.phase }));
         } else if (event.event === "log") {
           const data = event.data as LogData;
+          const parsedBlocks = parseLogContent(data.chunk);
           const entry: ConsoleLogEntry = {
             id: crypto.randomUUID(),
             timestamp: new Date().toISOString(),
             stream: data.stream,
             content: data.chunk,
+            parsedBlocks,
           };
-          setState((current) => {
-            const logs = [...current.logs, entry];
-            return {
-              ...current,
-              logs: logs.length > MAX_LOGS ? logs.slice(-MAX_LOGS) : logs,
-            };
+          startTransition(() => {
+            // Double-check inside startTransition as it's async
+            if (abortRef.current !== controller) return;
+            setState((current) => {
+              const logs = [...current.logs, entry];
+              return {
+                ...current,
+                logs: logs.length > MAX_LOGS ? logs.slice(-MAX_LOGS) : logs,
+              };
+            });
           });
         } else if (event.event === "done") {
           const data = event.data as DoneData;

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
@@ -14,12 +16,12 @@ export default function Home() {
           </p>
         </div>
         <div className="mt-20 flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
+          <Link
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-black text-white dark:bg-zinc-100 dark:text-black px-5 transition-colors hover:bg-zinc-800 dark:hover:bg-zinc-200 md:w-[220px] shadow"
             href="/artist-os-console"
           >
             Open Artist OS Console
-          </a>
+          </Link>
         </div>
       </main>
     </div>

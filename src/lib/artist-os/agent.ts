@@ -61,14 +61,21 @@ export async function runAgent(
       sessionId?: string;
     };
     sessionId = sessionData.sessionId;
+  } catch (err) {
+    // File may not exist if agent crashed before writing or SDK didn't emit session_id
+    console.error("[agent] Failed to read session file:", err);
+    sessionId = undefined;
+  }
+
+  // Cleanup session file separately to avoid losing sessionId on cleanup failure
+  try {
     await sandbox.runCommand({
       cmd: "rm",
       args: ["-f", sessionFilePath],
     });
   } catch (err) {
-    // File may not exist if agent crashed before writing or SDK didn't emit session_id
-    console.error("[agent] Failed to read session file:", err);
-    sessionId = undefined;
+    // Cleanup failure shouldn't prevent returning the session ID
+    console.warn("[agent] Failed to cleanup session file:", err);
   }
 
   return { exitCode, sessionId };

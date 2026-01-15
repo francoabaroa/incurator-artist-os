@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { HistoryEntry } from "../lib/types";
 
 interface PromptHistoryProps {
@@ -15,7 +16,7 @@ function formatTimestamp(value: string) {
   return date.toLocaleString();
 }
 
-export default function PromptHistory({
+function PromptHistory({
   entries,
   onSelect,
   onClear,
@@ -77,3 +78,5 @@ export default function PromptHistory({
     </div>
   );
 }
+
+export default memo(PromptHistory);

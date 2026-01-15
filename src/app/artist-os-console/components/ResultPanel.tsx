@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { DoneData } from "../lib/types";
 
 interface ResultPanelProps {
@@ -24,7 +25,7 @@ function formatBytes(bytes: number) {
   return `${mb.toFixed(1)} MB`;
 }
 
-export default function ResultPanel({
+function ResultPanel({
   result,
   error,
   statusCode,
@@ -125,3 +126,5 @@ export default function ResultPanel({
     </div>
   );
 }
+
+export default memo(ResultPanel);
