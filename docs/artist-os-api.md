@@ -49,8 +49,10 @@ event: status
 data: {"phase":"snapshot_export"}
 
 event: done
-data: {"ok":true,"exitCode":0,"manifest":{"artist_id":"user_123_demo",...}}
+data: {"ok":true,"exitCode":0,"sessionId":"session-abc123","manifest":{"artist_id":"user_123_demo",...}}
 ```
+
+The `sessionId` can be passed as `resume_session_id` in subsequent requests to continue the conversation with full context from the previous session.
 
 ## GET /api/artist-os/snapshot
 

@@ -28,3 +28,14 @@ export async function acquireArtistLock(
     },
   };
 }
+
+/**
+ * Force-release an artist lock regardless of the token.
+ * Only use this for admin cleanup of stale locks.
+ */
+export async function forceReleaseArtistLock(artistId: string): Promise<boolean> {
+  const redis = getRedis();
+  const key = `lock:artist:${artistId}`;
+  const deleted = await redis.del(key);
+  return deleted > 0;
+}

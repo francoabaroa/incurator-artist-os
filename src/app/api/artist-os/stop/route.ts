@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/artist-os/admin";
+import { forceReleaseArtistLock } from "@/lib/artist-os/lock";
 import { stopSandboxByArtist, stopSandboxById } from "@/lib/artist-os/sandbox";
 import { ArtistIdSchema } from "@/lib/artist-os/validation";
 
@@ -42,11 +43,23 @@ export async function POST(req: Request) {
   }
 
   let stopped = false;
+  let lockReleased = false;
+
   if (payload.sandbox_id) {
-    stopped = await stopSandboxById(payload.sandbox_id);
+    const result = await stopSandboxById(payload.sandbox_id);
+    stopped = result.stopped;
+    // Release lock for the associated artist when stopping by sandbox_id
+    if (result.stopped && result.artistId) {
+      lockReleased = await forceReleaseArtistLock(result.artistId);
+    }
   } else if (payload.artist_id) {
     stopped = await stopSandboxByArtist(payload.artist_id);
+    // Only release the lock if we actually stopped the sandbox
+    // to avoid allowing overlapping runs when the sandbox is on another instance
+    if (stopped) {
+      lockReleased = await forceReleaseArtistLock(payload.artist_id);
+    }
   }
 
-  return Response.json({ stopped });
+  return Response.json({ stopped, lockReleased });
 }

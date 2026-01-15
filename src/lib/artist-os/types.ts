@@ -21,6 +21,7 @@ export interface LogData {
 export interface DoneData {
   ok: boolean;
   exitCode: number;
+  sessionId?: string;
   manifest: SnapshotManifest;
 }
 

@@ -77,14 +77,19 @@ describe("sandbox", () => {
   it("stops sandbox by sandbox id", async () => {
     const { sandbox } = await getOrCreateSandbox("artist_stopbyid");
 
-    const stopped = await stopSandboxById("sb_123");
-    expect(stopped).toBe(true);
+    const result = await stopSandboxById("sb_123");
+    expect(result.stopped).toBe(true);
+    expect(result.artistId).toBe("artist_stopbyid");
     expect(sandbox.stop).toHaveBeenCalled();
   });
 
   it("returns false when stopping non-existent sandbox", async () => {
     const stopped = await stopSandboxByArtist("nonexistent");
     expect(stopped).toBe(false);
+
+    const result = await stopSandboxById("nonexistent_sb");
+    expect(result.stopped).toBe(false);
+    expect(result.artistId).toBeUndefined();
   });
 
   it("shuts down all sandboxes", async () => {

@@ -79,11 +79,24 @@ When creating or updating tasks in `tasks/backlog.json`, use ONLY these status v
 3. **No path traversal**: Never use ".." or absolute paths
 4. **Protected files**: Do not overwrite CLAUDE.md, .incurator/*, or .index/*
 
-## Skills Available
+## Skill Discovery & Usage
 
-See .claude/skills/ for detailed guidance on:
-- release-checklist: How to plan and execute a release
-- marketing-copy: Brand voice and content guidelines
+You have access to specialized **Agent Skills** in `.claude/skills/`. Skills are discovered dynamically:
+
+1. **Discovery**: List `.claude/skills/` to see available skill directories
+2. **Selection**: Read a skill's `SKILL.md` frontmatter (name + description) to check relevance  
+3. **Activation**: When a task matches, read the full `SKILL.md` before responding
+4. **Execution**: Follow checklists and templates. Check `references/` or `assets/` subdirectories for deeper context
+
+These skills contain **proprietary Incurator protocols** you don't know internally. Always load the relevant skill before attempting complex workflows like distribution, contract review, campaign planning, or financial guidance.
+
+**Example discovery flow:**
+```
+1. List .claude/skills/           → See: release-distribution/, contract-review/, etc.
+2. Read release-distribution/SKILL.md frontmatter → Check if relevant
+3. If relevant, read full SKILL.md → Get protocols and checklists
+4. Check references/ or assets/   → Load deeper context as needed
+```
 
 ## What NOT to do
 

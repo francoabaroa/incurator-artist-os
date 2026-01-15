@@ -101,6 +101,13 @@ ${skillSummaries}
   `.trim();
 
   const resumeSessionId = process.env.RESUME_SESSION_ID || undefined;
+  if (resumeSessionId) {
+    console.log(`Resuming session: ${resumeSessionId}`);
+  }
+  const claudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+  if (claudeConfigDir) {
+    await fs.mkdir(claudeConfigDir, { recursive: true });
+  }
   const recentFiles: string[] = [];
   const jsonBackups = new Map<string, string>();
   const preExistingFiles = new Map<string, boolean>();
@@ -355,8 +362,20 @@ ${skillSummaries}
     for await (const message of response) {
       messages.push(message);
 
+      if (message.type === "system" && "subtype" in message && message.subtype === "init") {
+        const initMessage = message as { session_id?: string };
+        if (initMessage.session_id) {
+          const sessionData = JSON.stringify({
+            sessionId: initMessage.session_id,
+            createdAt: new Date().toISOString(),
+          });
+          await fs.writeFile("/vercel/sandbox/_agent_session.json", sessionData, "utf-8");
+        }
+      }
+
       if (message.type === "assistant") {
-        console.log(message.message.content);
+        // Output as JSON so frontend can parse content blocks
+        console.log(JSON.stringify(message.message.content));
         continue;
       }
 
