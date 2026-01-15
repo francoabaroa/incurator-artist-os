@@ -49,7 +49,8 @@ export async function POST(req: Request) {
     const result = await stopSandboxById(payload.sandbox_id);
     stopped = result.stopped;
     // Release lock for the associated artist when stopping by sandbox_id
-    if (result.stopped && result.artistId) {
+    // Release even if stop failed since this is admin cleanup and sandbox is evicted from cache
+    if (result.artistId) {
       lockReleased = await forceReleaseArtistLock(result.artistId);
     }
   } else if (payload.artist_id) {

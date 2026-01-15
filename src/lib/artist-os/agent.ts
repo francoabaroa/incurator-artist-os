@@ -19,9 +19,13 @@ export async function runAgent(
   const stdout = createLogStream("stdout", onLog);
   const stderr = createLogStream("stderr", onLog);
 
+  // Use run-specific session file path to prevent stale reads if cleanup fails
+  const sessionFilePath = `/vercel/sandbox/_agent_session_${runId}.json`;
+
   const env: Record<string, string> = {
     PROMPT_B64: promptB64,
     SESSION_ID: runId,
+    SESSION_FILE_PATH: sessionFilePath,
     WORKSPACE_ROOT,
     CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: "80",
     CLAUDE_CONFIG_DIR,
@@ -52,17 +56,14 @@ export async function runAgent(
   let sessionId: string | undefined;
 
   try {
-    const sessionFileBytes = await readSandboxFile(
-      sandbox,
-      "/vercel/sandbox/_agent_session.json"
-    );
+    const sessionFileBytes = await readSandboxFile(sandbox, sessionFilePath);
     const sessionData = JSON.parse(sessionFileBytes.toString("utf-8")) as {
       sessionId?: string;
     };
     sessionId = sessionData.sessionId;
     await sandbox.runCommand({
       cmd: "rm",
-      args: ["-f", "/vercel/sandbox/_agent_session.json"],
+      args: ["-f", sessionFilePath],
     });
   } catch (err) {
     // File may not exist if agent crashed before writing or SDK didn't emit session_id

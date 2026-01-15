@@ -369,7 +369,9 @@ ${skillSummaries}
             sessionId: initMessage.session_id,
             createdAt: new Date().toISOString(),
           });
-          await fs.writeFile("/vercel/sandbox/_agent_session.json", sessionData, "utf-8");
+          // Use run-specific path from env to prevent stale reads if cleanup fails
+          const sessionFilePath = process.env.SESSION_FILE_PATH || "/vercel/sandbox/_agent_session.json";
+          await fs.writeFile(sessionFilePath, sessionData, "utf-8");
         }
       }
 

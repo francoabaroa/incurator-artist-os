@@ -98,6 +98,24 @@ describe("POST /api/artist-os/stop", () => {
     expect(forceReleaseArtistLock).toHaveBeenCalledWith("artist_456");
   });
 
+  it("releases lock even when sandbox stop fails by sandbox_id", async () => {
+    // Stop fails but we have artistId - lock should still be released for admin cleanup
+    stopSandboxById.mockResolvedValue({ stopped: false, artistId: "artist_789" });
+
+    const req = buildRequest(
+      { "x-admin-token": "test_admin_token" },
+      { sandbox_id: "sb_failing" }
+    );
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const data = await res.json();
+    expect(data.stopped).toBe(false);
+    // Lock should be released even though stop failed, since this is admin cleanup
+    expect(data.lockReleased).toBe(true);
+    expect(forceReleaseArtistLock).toHaveBeenCalledWith("artist_789");
+  });
+
   it("returns stopped: false when sandbox not found", async () => {
     stopSandboxByArtist.mockResolvedValue(false);
 
