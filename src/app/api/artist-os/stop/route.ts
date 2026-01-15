@@ -55,11 +55,10 @@ export async function POST(req: Request) {
     }
   } else if (payload.artist_id) {
     stopped = await stopSandboxByArtist(payload.artist_id);
-    // Only release the lock if we actually stopped the sandbox
-    // to avoid allowing overlapping runs when the sandbox is on another instance
-    if (stopped) {
-      lockReleased = await forceReleaseArtistLock(payload.artist_id);
-    }
+    // Always release the lock for admin cleanup, even if no sandbox was stopped
+    // The lock is in Redis (shared) but sandbox cache is per-instance, so a
+    // sandbox may exist on another instance that we can't stop from here
+    lockReleased = await forceReleaseArtistLock(payload.artist_id);
   }
 
   return Response.json({ stopped, lockReleased });

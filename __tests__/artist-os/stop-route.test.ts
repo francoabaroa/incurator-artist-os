@@ -116,7 +116,7 @@ describe("POST /api/artist-os/stop", () => {
     expect(forceReleaseArtistLock).toHaveBeenCalledWith("artist_789");
   });
 
-  it("returns stopped: false when sandbox not found", async () => {
+  it("releases lock even when sandbox not found by artist_id", async () => {
     stopSandboxByArtist.mockResolvedValue(false);
 
     const req = buildRequest(
@@ -128,9 +128,10 @@ describe("POST /api/artist-os/stop", () => {
 
     const data = await res.json();
     expect(data.stopped).toBe(false);
-    // Lock should NOT be released when sandbox wasn't stopped
-    expect(data.lockReleased).toBe(false);
-    expect(forceReleaseArtistLock).not.toHaveBeenCalled();
+    // Lock should ALWAYS be released for admin cleanup by artist_id
+    // since sandbox cache is per-instance but locks are in shared Redis
+    expect(data.lockReleased).toBe(true);
+    expect(forceReleaseArtistLock).toHaveBeenCalledWith("nonexistent");
   });
 
   it("returns 400 for invalid artist_id", async () => {
