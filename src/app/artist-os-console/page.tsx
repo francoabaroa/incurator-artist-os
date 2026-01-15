@@ -98,6 +98,8 @@ export default function ArtistOSConsolePage() {
             ) : null}
           </div>
           <button
+            aria-expanded={isDrawerOpen}
+            aria-haspopup="dialog"
             className="rounded-full border border-[var(--console-border)] bg-[var(--console-surface)] px-4 py-2 text-xs uppercase tracking-[0.2em] text-[var(--console-text-muted)] transition hover:-translate-y-0.5 hover:text-[var(--console-text)]"
             onClick={() => setIsDrawerOpen(true)}
             type="button"

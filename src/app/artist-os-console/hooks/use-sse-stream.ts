@@ -115,10 +115,10 @@ export function useSseStream() {
           };
           setState((current) => {
             const logs = [...current.logs, entry];
-            if (logs.length > MAX_LOGS) {
-              logs.splice(0, logs.length - MAX_LOGS);
-            }
-            return { ...current, logs };
+            return {
+              ...current,
+              logs: logs.length > MAX_LOGS ? logs.slice(-MAX_LOGS) : logs,
+            };
           });
         } else if (event.event === "done") {
           const data = event.data as DoneData;
