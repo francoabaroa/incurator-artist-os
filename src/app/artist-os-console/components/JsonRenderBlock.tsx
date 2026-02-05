@@ -11,9 +11,11 @@ import {
   useData,
 } from "@json-render/react";
 import type { UITree } from "@json-render/core";
-import { artistOSRegistry, buildActionHandlers, parseJsonRenderContent } from "../json-render";
+import type { ActionHandler } from "@json-render/core";
+import { artistOSRegistry, parseJsonRenderContent } from "../json-render";
 import type { ApplyPromptOptions } from "../json-render/actions";
 import type { ComponentRenderProps } from "@json-render/react";
+import { JsonRenderErrorBoundary } from "./ErrorBoundary";
 
 interface JsonRenderBlockProps {
   content: string;
@@ -81,10 +83,74 @@ export default function JsonRenderBlock({
     window.setTimeout(() => setNotice(null), 1800);
   }, []);
 
-  const handlers = useMemo(
-    () => buildActionHandlers({ onApplyPrompt, notify }),
-    [onApplyPrompt, notify]
-  );
+  // Use refs to ensure handlers always call the latest callbacks.
+  // This is necessary because ActionProvider snapshots handlers on mount
+  // and doesn't react to prop changes.
+  const onApplyPromptRef = useRef(onApplyPrompt);
+  const notifyRef = useRef(notify);
+
+  // Keep refs in sync with props
+  useEffect(() => {
+    onApplyPromptRef.current = onApplyPrompt;
+  }, [onApplyPrompt]);
+
+  useEffect(() => {
+    notifyRef.current = notify;
+  }, [notify]);
+
+  // Build handlers once - they close over refs to always call the latest callbacks.
+  // Using useState with initializer to ensure handlers are only created once.
+  const [handlers] = useState<Record<string, ActionHandler>>(() => ({
+    copy_to_clipboard: async (params) => {
+      const text = String((params as { text?: string }).text ?? "");
+      if (!text) {
+        notifyRef.current?.("Nothing to copy");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        notifyRef.current?.("Copied to clipboard");
+      } catch (error) {
+        console.warn("Failed to copy to clipboard", error);
+        notifyRef.current?.("Copy failed");
+      }
+    },
+    open_url: (params) => {
+      const url = String((params as { url?: string }).url ?? "");
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          notifyRef.current?.("Invalid URL");
+          return;
+        }
+      } catch {
+        notifyRef.current?.("Invalid URL");
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    },
+    apply_prompt: (params) => {
+      const payload = params as {
+        prompt?: string;
+        userId?: string | null;
+        artistId?: string | null;
+        resumeSessionId?: string | null;
+        ownedArtistIds?: string | null;
+      };
+      const prompt = String(payload.prompt ?? "");
+      if (!prompt) {
+        notifyRef.current?.("Prompt is empty");
+        return;
+      }
+      onApplyPromptRef.current?.(prompt, {
+        userId: payload.userId ?? null,
+        artistId: payload.artistId ?? null,
+        resumeSessionId: payload.resumeSessionId ?? null,
+        ownedArtistIds: payload.ownedArtistIds ?? null,
+      });
+      notifyRef.current?.("Prompt applied");
+    },
+  }));
 
   const parseResult = useMemo(() => {
     try {
@@ -123,24 +189,26 @@ export default function JsonRenderBlock({
           </pre>
         </div>
       ) : (
-        <DataProvider initialData={dataContext ?? {}}>
-          <DataContextSync dataContext={dataContext} />
-          <VisibilityProvider>
-            <ActionProvider handlers={handlers}>
-              <Renderer
-                tree={parseResult.tree}
-                registry={artistOSRegistry}
-                fallback={UnknownComponent}
-              />
-              {showRaw && (
-                <pre className="json-render-raw">
-                  <code>{content.trim()}</code>
-                </pre>
-              )}
-              <JsonRenderConfirmDialog />
-            </ActionProvider>
-          </VisibilityProvider>
-        </DataProvider>
+        <JsonRenderErrorBoundary content={content}>
+          <DataProvider initialData={dataContext ?? {}}>
+            <DataContextSync dataContext={dataContext} />
+            <VisibilityProvider>
+              <ActionProvider handlers={handlers}>
+                <Renderer
+                  tree={parseResult.tree}
+                  registry={artistOSRegistry}
+                  fallback={UnknownComponent}
+                />
+                {showRaw && (
+                  <pre className="json-render-raw">
+                    <code>{content.trim()}</code>
+                  </pre>
+                )}
+                <JsonRenderConfirmDialog />
+              </ActionProvider>
+            </VisibilityProvider>
+          </DataProvider>
+        </JsonRenderErrorBoundary>
       )}
     </div>
   );

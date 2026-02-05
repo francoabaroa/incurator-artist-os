@@ -509,6 +509,54 @@
   color: var(--jr-danger);
 }
 
+.json-render-error details {
+  margin-top: 12px;
+}
+
+.json-render-error summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--jr-text-muted);
+}
+
+.json-render-error summary:hover {
+  color: var(--jr-text);
+}
+
+/* Error boundary styles */
+.error-boundary-fallback {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--jr-danger) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--jr-danger) 25%, transparent);
+}
+
+.error-boundary-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.error-boundary-message {
+  flex: 1;
+}
+
+.error-boundary-message strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--jr-danger);
+  margin-bottom: 4px;
+}
+
+.error-boundary-message p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--jr-text-muted);
+}
+
 .json-render-raw {
   margin: 0;
   padding: 12px 14px;

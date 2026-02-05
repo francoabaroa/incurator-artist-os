@@ -11,6 +11,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import PromptHistory from "./components/PromptHistory";
 import QueryForm from "./components/QueryForm";
 import ResultPanel from "./components/ResultPanel";
@@ -200,12 +201,26 @@ export default function ConsoleShell() {
             </div>
           </section>
           <section className="flex flex-col gap-6">
-            <MessageHistory
-              logs={state.logs}
-              isStreaming={state.isStreaming}
-              dataContext={dataContext}
-              onApplyPrompt={handleApplyPrompt}
-            />
+            <ErrorBoundary
+              fallback={
+                <div className="message-history-container">
+                  <div className="message-history-header">
+                    <span className="message-history-title">Message History</span>
+                  </div>
+                  <div className="message-history-empty">
+                    <div className="error-boundary-icon">⚠️</div>
+                    <p>Failed to render message history. Please refresh the page.</p>
+                  </div>
+                </div>
+              }
+            >
+              <MessageHistory
+                logs={state.logs}
+                isStreaming={state.isStreaming}
+                dataContext={dataContext}
+                onApplyPrompt={handleApplyPrompt}
+              />
+            </ErrorBoundary>
             <StreamViewer phase={state.phase} logs={state.logs} />
             <ResultPanel
               error={state.error}

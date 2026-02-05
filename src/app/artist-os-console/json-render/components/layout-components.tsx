@@ -33,8 +33,10 @@ export function Card({ element, children }: ComponentRenderProps) {
     defaultCollapsed,
   } = props;
 
-  const [collapsed, setCollapsed] = useState(Boolean(defaultCollapsed));
-  const isCollapsible = Boolean(collapsible);
+  // Treat defaultCollapsed as implicitly enabling collapse behavior
+  // This prevents cards from being stuck collapsed with no toggle
+  const isCollapsible = Boolean(collapsible) || Boolean(defaultCollapsed);
+  const [collapsed, setCollapsed] = useState(isCollapsible && Boolean(defaultCollapsed));
   const paddingValue = sizeSpacing[padding ?? "md"];
 
   return (
