@@ -109,3 +109,33 @@ export function normalizeAction(action: ActionRef): Action {
     confirm,
   };
 }
+
+/**
+ * Sanitizes a URL to only allow safe protocols (http/https).
+ * Returns "#" for invalid or dangerous URLs to prevent XSS via javascript:/data: schemes.
+ */
+export function sanitizeHref(href: string | undefined | null): string {
+  if (!href) return "#";
+
+  try {
+    const parsed = new URL(href, window.location.origin);
+    // Only allow http and https protocols
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return href;
+    }
+    // Block javascript:, data:, vbscript:, etc.
+    console.warn(`[json-render] Blocked unsafe URL protocol: ${parsed.protocol}`);
+    return "#";
+  } catch {
+    // If it's a relative URL, it's safe (will use current origin)
+    if (href.startsWith("/") || href.startsWith("./") || href.startsWith("../")) {
+      return href;
+    }
+    // If it starts with # it's an anchor link
+    if (href.startsWith("#")) {
+      return href;
+    }
+    console.warn(`[json-render] Blocked malformed URL: ${href}`);
+    return "#";
+  }
+}

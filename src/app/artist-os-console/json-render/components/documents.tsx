@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentRenderProps } from "@json-render/react";
+import { sanitizeHref } from "./shared";
 
 export function PressRelease({ element, onAction }: ComponentRenderProps) {
   const props = (element.props ?? {}) as {
@@ -73,7 +74,7 @@ export function PressRelease({ element, onAction }: ComponentRenderProps) {
         <ul className="jr-press-links">
           {safeLinks.map((link, index) => (
             <li key={`link-${index}`}>
-              <a href={link.url} target="_blank" rel="noopener noreferrer">
+              <a href={sanitizeHref(link.url)} target="_blank" rel="noopener noreferrer">
                 {link.label}
               </a>
             </li>

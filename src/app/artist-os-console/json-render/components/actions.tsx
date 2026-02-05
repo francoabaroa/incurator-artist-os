@@ -3,7 +3,7 @@
 import type { ComponentRenderProps } from "@json-render/react";
 import type { ReactNode } from "react";
 import type { ActionRef, Align, Size, Tone } from "../catalog";
-import { alignStyle, normalizeAction, sizeClass, toneClass } from "./shared";
+import { alignStyle, normalizeAction, sanitizeHref, sizeClass, toneClass } from "./shared";
 
 const iconMap: Record<string, ReactNode> = {
   copy: (
@@ -82,7 +82,7 @@ export function Link({ element }: ComponentRenderProps) {
   return (
     <a
       className={`jr-link ${toneClass(tone)}`}
-      href={href}
+      href={sanitizeHref(href)}
       target={external ? "_blank" : undefined}
       rel={external ? "noopener noreferrer" : undefined}
     >
