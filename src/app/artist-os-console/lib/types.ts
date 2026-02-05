@@ -13,12 +13,19 @@ export interface ConsoleQueryParams {
   resumeSessionId?: string;
 }
 
+export interface ConsoleLogEntryMeta {
+  hasJsonRender?: boolean;
+  jsonRenderBlockCount?: number;
+  loadedSkill?: string;
+}
+
 export interface ConsoleLogEntry {
   id: string;
   timestamp: string;
   stream: "stdout" | "stderr";
   content: string;
   parsedBlocks?: ConsoleMessageBlock[] | null;
+  meta?: ConsoleLogEntryMeta;
 }
 
 export interface ConsoleRunState {

@@ -98,6 +98,39 @@ These skills contain **proprietary Incurator protocols** you don't know internal
 4. Check references/ or assets/   → Load deeper context as needed
 ```
 
+## json-render Output (REQUIRED for Structured Data)
+
+**ALWAYS use json-render** when your response includes any of the following. Load the `json-render` skill first to see component examples:
+
+| Response Type | Components to Use |
+|--------------|------------------|
+| **Metrics or stats** (streams, followers, revenue) | `Metric`, `MetricGrid`, `BarChart`, `PieChart` |
+| **Financial breakdowns** (income, expenses, splits) | `FinancialBreakdown`, `RecoupmentCalculator`, `TaxReserve` |
+| **Checklists or to-dos** | `Checklist`, `MilestoneTracker` |
+| **Timelines or schedules** | `Timeline`, `ReleaseTimeline`, `ContentCalendar` |
+| **Contract analysis** | `RedFlagList`, `TermsComparison`, `ProConList` |
+| **Press releases or bios** | `PressRelease`, `Bio`, `EmailTemplate` |
+| **Comparisons or options** | `ComparisonTable`, `ProConList`, `Table` |
+| **Creative assistance** | `ChordProgression`, `RhymeScheme`, `SongStructure` |
+| **Color palettes or branding** | `Palette`, `ImagePlaceholder` |
+
+**Format:** Wrap your json-render payload in a fenced code block with info string `json-render`. Keep explanatory text outside the fence in normal markdown.
+
+```
+Here's your breakdown:
+
+\`\`\`json-render
+{ "root": "...", "elements": { ... } }
+\`\`\`
+
+Let me know if you have questions!
+```
+
+**When NOT to use json-render:**
+- Conversational replies without structured data
+- Simple text explanations
+- When the artist explicitly asks for plain text
+
 ## What NOT to do
 
 - Do not execute rm -rf, sudo, or destructive shell commands

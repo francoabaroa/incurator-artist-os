@@ -18,6 +18,10 @@ function formatTimestamp(value: string) {
 }
 
 const LogEntry = memo(function LogEntry({ entry }: { entry: ConsoleLogEntry }) {
+  const hasJsonRender = entry.meta?.hasJsonRender;
+  const jsonRenderCount = entry.meta?.jsonRenderBlockCount ?? 0;
+  const loadedSkill = entry.meta?.loadedSkill;
+
   return (
     <div className="console-log-entry rounded-md border border-transparent bg-white px-3 py-2">
       <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-[var(--console-text-muted)]">
@@ -31,6 +35,16 @@ const LogEntry = memo(function LogEntry({ entry }: { entry: ConsoleLogEntry }) {
         >
           {entry.stream}
         </span>
+        {hasJsonRender && (
+          <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[9px] font-medium text-purple-700">
+            json-render ×{jsonRenderCount}
+          </span>
+        )}
+        {loadedSkill && (
+          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-medium text-blue-700">
+            skill: {loadedSkill}
+          </span>
+        )}
       </div>
       <pre
         className={`mt-2 whitespace-pre-wrap text-sm ${
@@ -48,6 +62,19 @@ const LogEntry = memo(function LogEntry({ entry }: { entry: ConsoleLogEntry }) {
 export default function StreamViewer({ phase, logs }: StreamViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isPinned, setIsPinned] = useState(true);
+
+  // Compute session-level stats
+  const jsonRenderTotal = logs.reduce(
+    (sum, log) => sum + (log.meta?.jsonRenderBlockCount ?? 0),
+    0
+  );
+  const skillsLoaded = [
+    ...new Set(
+      logs
+        .map((log) => log.meta?.loadedSkill)
+        .filter((s): s is string => Boolean(s))
+    ),
+  ];
 
   useEffect(() => {
     if (!isPinned) {
@@ -86,9 +113,26 @@ export default function StreamViewer({ phase, logs }: StreamViewerProps) {
 
       <div className="rounded-xl border border-[var(--console-border)] bg-[var(--console-surface)] p-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.3em] text-[var(--console-text-muted)]">
-            Stream Logs
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs uppercase tracking-[0.3em] text-[var(--console-text-muted)]">
+              Stream Logs
+            </p>
+            {jsonRenderTotal > 0 && (
+              <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[9px] font-medium text-purple-700">
+                {jsonRenderTotal} json-render block{jsonRenderTotal > 1 ? "s" : ""}
+              </span>
+            )}
+            {skillsLoaded.length > 0 && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-medium text-blue-700">
+                {skillsLoaded.length} skill{skillsLoaded.length > 1 ? "s" : ""} loaded
+              </span>
+            )}
+            {jsonRenderTotal === 0 && logs.length > 0 && skillsLoaded.includes("json-render") && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-medium text-amber-700">
+                json-render skill loaded but not used
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-[var(--console-text-muted)]">
             <span>{logs.length} lines</span>
             {!isPinned ? (
