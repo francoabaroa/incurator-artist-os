@@ -1,7 +1,9 @@
 import { getByPath, setByPath, type UIElement, type UITree } from "@json-render/core";
 import type { JsonRenderSegment } from "./types";
 
-const JSON_RENDER_FENCE_REGEX = /```json-render\s*\n([\s\S]*?)```/g;
+// Closing fence must be at start of line (with optional leading whitespace)
+// to avoid matching triple backticks inside JSON strings
+const JSON_RENDER_FENCE_REGEX = /```json-render\s*\n([\s\S]*?)\n\s*```/g;
 const MAX_JSON_RENDER_BYTES = 50 * 1024;
 const MAX_JSON_RENDER_ELEMENTS = 200;
 
@@ -25,6 +27,10 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isElement(value: unknown): value is RawElement {
   return isPlainObject(value) && typeof value.type === "string";
+}
+
+function isPatch(value: unknown): value is JsonPatch {
+  return isPlainObject(value) && typeof value.op === "string" && typeof value.path === "string";
 }
 
 function normalizeNewlines(value: string): string {
@@ -84,8 +90,13 @@ export function parseJsonRenderContent(content: string): UITree {
     .map((line) => line.trim())
     .filter(Boolean);
 
-  if (lines.length > 1 && lines.every((line) => line.startsWith("{"))) {
-    return parseJsonLines(lines);
+  // Detect JSONL by checking if all lines start with { and at least one looks like a patch
+  if (lines.every((line) => line.startsWith("{"))) {
+    // Parse the first line to check if it's a JSONL patch
+    const firstParsed = safeJsonParse(lines[0]);
+    if (isPatch(firstParsed)) {
+      return parseJsonLines(lines);
+    }
   }
 
   const parsed = safeJsonParse(trimmed);

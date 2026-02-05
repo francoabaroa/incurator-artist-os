@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionProvider,
   ConfirmDialog,
@@ -42,12 +42,27 @@ function UnknownComponent({ element }: ComponentRenderProps) {
   );
 }
 
+/**
+ * Syncs external dataContext changes into the DataProvider state.
+ * Only updates the specific fields we own (phase, result) using JSON Pointer paths.
+ */
 function DataContextSync({ dataContext }: { dataContext?: Record<string, unknown> }) {
   const { update } = useData();
+  const prevDataContextRef = useRef(dataContext);
 
   useEffect(() => {
+    // Skip initial mount (DataProvider already has initialData)
+    if (dataContext === prevDataContextRef.current) return;
+    prevDataContextRef.current = dataContext;
+
     if (!dataContext) return;
-    update(dataContext);
+
+    // Convert to JSON Pointer paths for the update function
+    const updates: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(dataContext)) {
+      updates[`/${key}`] = value;
+    }
+    update(updates);
   }, [dataContext, update]);
 
   return null;

@@ -1,9 +1,25 @@
 "use client";
 
+import { createElement } from "react";
 import { Streamdown } from "streamdown";
 import type { ComponentRenderProps } from "@json-render/react";
 import type { Align, Size, Tone } from "../catalog";
 import { alignStyle, sizeClass, toneClass } from "./shared";
+
+// Normalize level - handle both string ("h1") and number (1) formats
+function normalizeLevel(lvl: unknown): "h1" | "h2" | "h3" | "h4" {
+  if (typeof lvl === "number") {
+    if (lvl >= 1 && lvl <= 4) return `h${lvl}` as "h1" | "h2" | "h3" | "h4";
+    return "h2";
+  }
+  if (typeof lvl === "string") {
+    if (["h1", "h2", "h3", "h4"].includes(lvl)) return lvl as "h1" | "h2" | "h3" | "h4";
+    // Handle "1", "2", "3", "4" strings
+    const num = parseInt(lvl, 10);
+    if (num >= 1 && num <= 4) return `h${num}` as "h1" | "h2" | "h3" | "h4";
+  }
+  return "h2";
+}
 
 export function Heading({ element }: ComponentRenderProps) {
   const props = (element.props ?? {}) as {
@@ -14,29 +30,15 @@ export function Heading({ element }: ComponentRenderProps) {
   };
   const { text, level, align, tone } = props;
 
-  // Normalize level - handle both string ("h1") and number (1) formats
-  const normalizeLevel = (lvl: unknown): "h1" | "h2" | "h3" | "h4" => {
-    if (typeof lvl === "number") {
-      if (lvl >= 1 && lvl <= 4) return `h${lvl}` as "h1" | "h2" | "h3" | "h4";
-      return "h2";
-    }
-    if (typeof lvl === "string") {
-      if (["h1", "h2", "h3", "h4"].includes(lvl)) return lvl as "h1" | "h2" | "h3" | "h4";
-      // Handle "1", "2", "3", "4" strings
-      const num = parseInt(lvl, 10);
-      if (num >= 1 && num <= 4) return `h${num}` as "h1" | "h2" | "h3" | "h4";
-    }
-    return "h2";
-  };
-
-  const Tag = normalizeLevel(level);
-  return (
-    <Tag
-      className={`jr-heading ${toneClass(tone)} ${sizeClass(Tag, "jr-heading")}`}
-      style={alignStyle(align)}
-    >
-      {text}
-    </Tag>
+  const tag = normalizeLevel(level);
+  // Use createElement for dynamic tag to satisfy React Compiler
+  return createElement(
+    tag,
+    {
+      className: `jr-heading ${toneClass(tone)} ${sizeClass(tag, "jr-heading")}`,
+      style: alignStyle(align),
+    },
+    text
   );
 }
 
