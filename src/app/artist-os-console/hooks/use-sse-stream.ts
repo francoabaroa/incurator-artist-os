@@ -23,14 +23,15 @@ function detectLogMeta(content: string, parsedBlocks: unknown[] | null): Console
 
   // Check for json-render fences in text blocks
   if (parsedBlocks && Array.isArray(parsedBlocks)) {
+    let jsonRenderCount = 0;
+
     for (const block of parsedBlocks) {
       if (block && typeof block === "object" && "type" in block) {
         if ((block as { type: string }).type === "text") {
           const text = (block as { text?: string }).text ?? "";
           const matches = text.match(JSON_RENDER_FENCE_REGEX);
           if (matches) {
-            meta.hasJsonRender = true;
-            meta.jsonRenderBlockCount = matches.length;
+            jsonRenderCount += matches.length;
           }
         }
         // Check for skill loading via tool_use
@@ -43,6 +44,12 @@ function detectLogMeta(content: string, parsedBlocks: unknown[] | null): Console
           }
         }
       }
+    }
+
+    // Set metadata after accumulating across all text blocks
+    if (jsonRenderCount > 0) {
+      meta.hasJsonRender = true;
+      meta.jsonRenderBlockCount = jsonRenderCount;
     }
   }
 
