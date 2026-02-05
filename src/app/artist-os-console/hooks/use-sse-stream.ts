@@ -2,11 +2,12 @@
 
 import { startTransition, useCallback, useRef, useState } from "react";
 import { streamSSE } from "../lib/stream-sse";
+import { parseConsoleMessageBlocks } from "../lib/parse-console-message";
 import type {
   ConsoleQueryParams,
   ConsoleLogEntry,
+  ConsoleLogEntryMeta,
   ConsoleRunState,
-  ConsoleMessageBlock,
   StatusData,
   LogData,
   DoneData,
@@ -14,29 +15,45 @@ import type {
 } from "../lib/types";
 
 const MAX_LOGS = 2000;
+const JSON_RENDER_FENCE_REGEX = /```json-render/g;
+const SKILL_READ_REGEX = /\.claude\/skills\/([^/]+)\/SKILL\.md/;
 
-function parseLogContent(content: string): ConsoleMessageBlock[] | null {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith("[")) return null;
+function detectLogMeta(content: string, parsedBlocks: unknown[] | null): ConsoleLogEntryMeta {
+  const meta: ConsoleLogEntryMeta = {};
 
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      const first = parsed[0];
-      if (
-        first &&
-        typeof first === "object" &&
-        "type" in first &&
-        (first.type === "text" || first.type === "tool_use")
-      ) {
-        return parsed as ConsoleMessageBlock[];
+  // Check for json-render fences in text blocks
+  if (parsedBlocks && Array.isArray(parsedBlocks)) {
+    let jsonRenderCount = 0;
+
+    for (const block of parsedBlocks) {
+      if (block && typeof block === "object" && "type" in block) {
+        if ((block as { type: string }).type === "text") {
+          const text = (block as { text?: string }).text ?? "";
+          const matches = text.match(JSON_RENDER_FENCE_REGEX);
+          if (matches) {
+            jsonRenderCount += matches.length;
+          }
+        }
+        // Check for skill loading via tool_use
+        if ((block as { type: string }).type === "tool_use") {
+          const input = (block as { input?: { file_path?: string } }).input;
+          const filePath = input?.file_path ?? "";
+          const skillMatch = filePath.match(SKILL_READ_REGEX);
+          if (skillMatch?.[1]) {
+            meta.loadedSkill = skillMatch[1];
+          }
+        }
       }
     }
-  } catch {
-    // Not valid JSON
+
+    // Set metadata after accumulating across all text blocks
+    if (jsonRenderCount > 0) {
+      meta.hasJsonRender = true;
+      meta.jsonRenderBlockCount = jsonRenderCount;
+    }
   }
 
-  return null;
+  return meta;
 }
 
 function buildErrorMessage(value: unknown, status: number): string {
@@ -138,13 +155,15 @@ export function useSseStream() {
           setState((current) => ({ ...current, phase: data.phase }));
         } else if (event.event === "log") {
           const data = event.data as LogData;
-          const parsedBlocks = parseLogContent(data.chunk);
+          const parsedBlocks = parseConsoleMessageBlocks(data.chunk);
+          const meta = detectLogMeta(data.chunk, parsedBlocks);
           const entry: ConsoleLogEntry = {
             id: crypto.randomUUID(),
             timestamp: new Date().toISOString(),
             stream: data.stream,
             content: data.chunk,
             parsedBlocks,
+            meta: Object.keys(meta).length > 0 ? meta : undefined,
           };
           startTransition(() => {
             // Double-check inside startTransition as it's async

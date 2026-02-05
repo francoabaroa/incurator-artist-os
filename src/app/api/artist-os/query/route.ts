@@ -59,7 +59,10 @@ export async function POST(req: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
+      let closed = false;
+
       const send = (event: string, data: unknown) => {
+        if (closed) return; // Guard against writes after controller is closed
         controller.enqueue(
           encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
         );
@@ -114,6 +117,7 @@ export async function POST(req: Request) {
           send("error", { message: `Lock release error: ${String(error)}` });
         }
 
+        closed = true;
         controller.close();
       }
     },

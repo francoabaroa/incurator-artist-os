@@ -3,6 +3,10 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import type { ConsoleLogEntry, ConsoleMessageBlock } from "../lib/types";
+import { parseConsoleMessageBlocks } from "../lib/parse-console-message";
+import { splitJsonRenderFences } from "../json-render";
+import JsonRenderBlock from "./JsonRenderBlock";
+import type { ApplyPromptOptions } from "../json-render/actions";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -22,6 +26,8 @@ interface ParsedMessage {
 interface MessageHistoryProps {
   logs: ConsoleLogEntry[];
   isStreaming?: boolean;
+  dataContext?: Record<string, unknown>;
+  onApplyPrompt?: (prompt: string, options?: ApplyPromptOptions) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,30 +151,6 @@ function getToolIcon(toolName: string): React.ReactNode {
 // Parsing
 // ─────────────────────────────────────────────────────────────────────────────
 
-function parseLogContent(content: string): ConsoleMessageBlock[] | null {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith("[")) return null;
-
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      // Validate that it looks like our expected format
-      const first = parsed[0];
-      if (
-        first &&
-        typeof first === "object" &&
-        "type" in first &&
-        (first.type === "text" || first.type === "tool_use")
-      ) {
-        return parsed as ConsoleMessageBlock[];
-      }
-    }
-  } catch {
-    // Not valid JSON
-  }
-  return null;
-}
-
 function parseMessages(logs: ConsoleLogEntry[]): ParsedMessage[] {
   return logs.map((log) => ({
     id: log.id,
@@ -177,7 +159,7 @@ function parseMessages(logs: ConsoleLogEntry[]): ParsedMessage[] {
     blocks:
       log.parsedBlocks !== undefined
         ? log.parsedBlocks
-        : parseLogContent(log.content),
+        : parseConsoleMessageBlocks(log.content),
     rawContent: log.content,
   }));
 }
@@ -292,14 +274,51 @@ const ToolUseBlockComponent = memo(function ToolUseBlockComponent({
 const TextBlockComponent = memo(function TextBlockComponent({
   block,
   isStreaming,
+  dataContext,
+  onApplyPrompt,
 }: {
   block: TextBlock;
   isStreaming?: boolean;
+  dataContext?: Record<string, unknown>;
+  onApplyPrompt?: (prompt: string, options?: ApplyPromptOptions) => void;
 }) {
+  const segments = useMemo(
+    () => splitJsonRenderFences(block.text),
+    [block.text]
+  );
+
+  const jsonRenderCount = segments.filter((s) => s.type === "json-render").length;
+
   return (
     <div className="text-block">
-      <div className="streamdown-content">
-        <Streamdown isAnimating={isStreaming}>{block.text}</Streamdown>
+      {jsonRenderCount > 0 && (
+        <div className="text-block-meta">
+          <span className="json-render-badge">
+            ✨ json-render ×{jsonRenderCount}
+          </span>
+        </div>
+      )}
+      <div className="text-block-content">
+        {segments.map((segment, index) => {
+          if (segment.type === "text") {
+            if (!segment.content.trim()) {
+              return null;
+            }
+            return (
+              <div key={`text-${index}`} className="streamdown-content">
+                <Streamdown isAnimating={isStreaming}>{segment.content}</Streamdown>
+              </div>
+            );
+          }
+          return (
+            <JsonRenderBlock
+              key={`json-render-${index}`}
+              content={segment.content}
+              dataContext={dataContext}
+              onApplyPrompt={onApplyPrompt}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -309,10 +328,14 @@ const AgentMessage = memo(function AgentMessage({
   blocks,
   timestamp,
   isStreaming,
+  dataContext,
+  onApplyPrompt,
 }: {
   blocks: ConsoleMessageBlock[];
   timestamp: string;
   isStreaming?: boolean;
+  dataContext?: Record<string, unknown>;
+  onApplyPrompt?: (prompt: string, options?: ApplyPromptOptions) => void;
 }) {
   return (
     <div className="message-entry agent-message">
@@ -327,6 +350,8 @@ const AgentMessage = memo(function AgentMessage({
                 key={idx}
                 block={block}
                 isStreaming={isStreaming}
+                dataContext={dataContext}
+                onApplyPrompt={onApplyPrompt}
               />
             );
           }
@@ -347,6 +372,8 @@ const AgentMessage = memo(function AgentMessage({
 export default function MessageHistory({
   logs,
   isStreaming,
+  dataContext,
+  onApplyPrompt,
 }: MessageHistoryProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isPinned, setIsPinned] = useState(true);
@@ -448,6 +475,8 @@ export default function MessageHistory({
                 blocks={msg.blocks!}
                 timestamp={msg.timestamp}
                 isStreaming={isStreaming && idx === agentMessages.length - 1}
+                dataContext={dataContext}
+                onApplyPrompt={onApplyPrompt}
               />
             ))}
           </div>

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["shiki"],
+  transpilePackages: ["shiki", "@json-render/core", "@json-render/react"],
 };
 
 export default nextConfig;

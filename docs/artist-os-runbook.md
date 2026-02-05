@@ -122,3 +122,5 @@ Run the web console for end-to-end testing:
 5. Open the debug drawer to run admin actions (requires `ARTIST_OS_ADMIN_TOKEN`)
 
 The console auto-fills `x-artist-ids` with the artist ID by default. Uncheck the option to test ownership mismatches.
+
+The Message History also renders json-render fenced blocks into structured UI. Ask the agent to include a json-render fence in its response to see cards, tables, timelines, or checklists instead of raw JSON.

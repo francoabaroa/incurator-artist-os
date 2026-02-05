@@ -3,7 +3,15 @@
 import "./console.css";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import PromptHistory from "./components/PromptHistory";
 import QueryForm from "./components/QueryForm";
 import ResultPanel from "./components/ResultPanel";
@@ -11,6 +19,7 @@ import StreamViewer from "./components/StreamViewer";
 import { usePromptHistory } from "./hooks/use-prompt-history";
 import { useSseStream } from "./hooks/use-sse-stream";
 import type { ConsoleQueryParams, HistoryEntry } from "./lib/types";
+import type { ApplyPromptOptions } from "./json-render/actions";
 
 const MessageHistory = dynamic(
   () => import("./components/MessageHistory").then((mod) => mod.default),
@@ -67,6 +76,13 @@ export default function ConsoleShell() {
   const { entries, add, update, clear } = usePromptHistory();
   const lastHistoryIdRef = useRef<string | null>(null);
   const latestSessionId = state.result?.sessionId;
+  const dataContext = useMemo(
+    () => ({
+      phase: state.phase,
+      result: state.result,
+    }),
+    [state.phase, state.result]
+  );
 
   useEffect(() => {
     const lastHistoryId = lastHistoryIdRef.current;
@@ -100,6 +116,29 @@ export default function ConsoleShell() {
     });
     setFormSeed((seed) => seed + 1);
   }, []);
+
+  const handleApplyPrompt = useCallback(
+    (prompt: string, options?: ApplyPromptOptions) => {
+      setFormDefaults((current) => ({
+        userId: options?.userId ?? current.userId ?? lastRequest?.userId ?? "",
+        artistId:
+          options?.artistId ?? current.artistId ?? lastRequest?.artistId ?? "",
+        ownedArtistIds:
+          options?.ownedArtistIds ??
+          current.ownedArtistIds ??
+          lastRequest?.ownedArtistIds ??
+          "",
+        resumeSessionId:
+          options?.resumeSessionId ??
+          current.resumeSessionId ??
+          lastRequest?.resumeSessionId ??
+          "",
+        prompt,
+      }));
+      setFormSeed((seed) => seed + 1);
+    },
+    [lastRequest]
+  );
 
   return (
     <div
@@ -162,10 +201,26 @@ export default function ConsoleShell() {
             </div>
           </section>
           <section className="flex flex-col gap-6">
-            <MessageHistory
-              logs={state.logs}
-              isStreaming={state.isStreaming}
-            />
+            <ErrorBoundary
+              fallback={
+                <div className="message-history-container">
+                  <div className="message-history-header">
+                    <span className="message-history-title">Message History</span>
+                  </div>
+                  <div className="message-history-empty">
+                    <div className="error-boundary-icon">⚠️</div>
+                    <p>Failed to render message history. Please refresh the page.</p>
+                  </div>
+                </div>
+              }
+            >
+              <MessageHistory
+                logs={state.logs}
+                isStreaming={state.isStreaming}
+                dataContext={dataContext}
+                onApplyPrompt={handleApplyPrompt}
+              />
+            </ErrorBoundary>
             <StreamViewer phase={state.phase} logs={state.logs} />
             <ResultPanel
               error={state.error}
