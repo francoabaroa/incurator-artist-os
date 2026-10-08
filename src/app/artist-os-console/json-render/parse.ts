@@ -119,6 +119,13 @@ function parseJsonLines(lines: string[]): UITree {
 
 function applyPatch(tree: Record<string, unknown>, patch: JsonPatch) {
   const rawPath = patch.path ?? "";
+  // Core path helpers traverse inherited properties. Check before either reads
+  // or writes so agent output cannot mutate shared JavaScript prototypes.
+  if (rawPath.split("/").some((segment) =>
+    segment === "__proto__" || segment === "constructor" || segment === "prototype"
+  )) {
+    throw new Error("Unsafe JSONL patch path");
+  }
   const normalizedPath = rawPath.replace(/\/-$/, "");
 
   switch (patch.op) {

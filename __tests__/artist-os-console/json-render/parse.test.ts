@@ -106,3 +106,28 @@ describe("parseJsonRenderContent", () => {
       .toThrowError(/size limit/);
   });
 });
+
+describe("JSONL prototype safety", () => {
+  it.each(["add", "set", "replace", "remove"])(
+    "rejects prototype paths for %s without touching Object.prototype",
+    (op) => {
+      const prototype = Object.prototype as Record<string, unknown>;
+      prototype.quickWinSentinel = "original";
+      try {
+        for (const path of [
+          "/__proto__/quickWinSentinel",
+          "__proto__/quickWinSentinel",
+          "/constructor/prototype/quickWinSentinel",
+          "/elements/__proto__/quickWinSentinel",
+        ]) {
+          expect(() => parseJsonRenderContent(JSON.stringify({
+            op, path, value: "changed",
+          }))).toThrow(/unsafe.*path/i);
+          expect(prototype.quickWinSentinel).toBe("original");
+        }
+      } finally {
+        delete prototype.quickWinSentinel;
+      }
+    }
+  );
+});
