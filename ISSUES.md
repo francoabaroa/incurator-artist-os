@@ -21,3 +21,10 @@ This file captures the current, known issues in the json-render integration. It 
 ## What Was Not Verified
 - A full live agent session that emits contract json-render output in the console.
 - Production build behavior (`pnpm build`) to confirm whether global CSS import is stripped.
+
+## Follow-up Recommendations
+- Add an integration test that exercises the full Artist OS flow with a mocked sandbox (or in CI with real Vercel credentials) to validate end-to-end behavior.
+- Update `init.sh` directory verification to include missing required directories:
+  `profile tasks releases marketing progress .trace .index brand contracts finances logs`.
+- Add `BudgetSchema` to the schema registry if finances validation is required by current or upcoming templates.
+- Add a guardrail unit test for dangerous command blocking (for example, assert `canUseTool` rejects commands like `rm -rf /`).
