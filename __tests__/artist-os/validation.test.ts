@@ -232,6 +232,9 @@ describe("QueryRequestSchema", () => {
       prompt: "Hello",
     });
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.session_mode).toBeUndefined();
+    }
   });
 
   it("rejects invalid artist_id in request", () => {
@@ -239,6 +242,29 @@ describe("QueryRequestSchema", () => {
       artist_id: "../escape",
       prompt: "Hello",
     });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts explicit feature_flow session mode", () => {
+    const result = QueryRequestSchema.safeParse({
+      artist_id: "artist_123",
+      prompt: "Hello",
+      session_mode: "feature_flow",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.session_mode).toBe("feature_flow");
+    }
+  });
+
+  it("rejects invalid session mode", () => {
+    const result = QueryRequestSchema.safeParse({
+      artist_id: "artist_123",
+      prompt: "Hello",
+      session_mode: "unknown_mode",
+    });
+
     expect(result.success).toBe(false);
   });
 });

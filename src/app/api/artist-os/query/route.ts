@@ -1,6 +1,11 @@
 import ms from "ms";
 import { QueryRequestSchema } from "@/lib/artist-os/validation";
-import { getAuthUserId, userOwnsArtist } from "@/lib/artist-os/auth";
+import {
+  getAuthUserId,
+  getIncuratorUserId,
+  InvalidIncuratorUserIdError,
+  userOwnsArtist,
+} from "@/lib/artist-os/auth";
 import { checkRateLimit } from "@/lib/artist-os/rate-limit";
 import { acquireArtistLock } from "@/lib/artist-os/lock";
 import { getOrCreateSandbox, stopSandboxByArtist } from "@/lib/artist-os/sandbox";
@@ -9,6 +14,12 @@ import {
   restoreArtistSnapshot,
   restoreBaseSnapshot,
 } from "@/lib/artist-os/snapshot";
+import {
+  ResumeSessionMetadataError,
+  resolveSessionContextForRequest,
+  storeSessionMetadata,
+} from "@/lib/artist-os/session-metadata";
+import type { SessionMode } from "@/lib/artist-os/session-mode";
 import { runAgent } from "@/lib/artist-os/agent";
 import type { LogData, StatusData } from "@/lib/artist-os/types";
 
@@ -32,9 +43,44 @@ export async function POST(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { artist_id: artistId, prompt, resume_session_id } = parsed.data;
+  let requestedIncuratorUserId: string | null;
+  try {
+    requestedIncuratorUserId = getIncuratorUserId(req);
+  } catch (error) {
+    if (error instanceof InvalidIncuratorUserIdError) {
+      return Response.json({ error: error.message }, { status: 400 });
+    }
+
+    throw error;
+  }
+
+  const {
+    artist_id: artistId,
+    prompt,
+    resume_session_id,
+    session_mode,
+  } = parsed.data;
   if (!userOwnsArtist(req, userId, artistId)) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  let resolvedSessionMode: SessionMode;
+  let resolvedIncuratorUserId: string | undefined;
+  try {
+    const sessionContext = await resolveSessionContextForRequest({
+      artistId,
+      requestedSessionMode: session_mode,
+      requestedIncuratorUserId: requestedIncuratorUserId ?? undefined,
+      resumeSessionId: resume_session_id,
+    });
+    resolvedSessionMode = sessionContext.sessionMode;
+    resolvedIncuratorUserId = sessionContext.incuratorUserId;
+  } catch (error) {
+    if (error instanceof ResumeSessionMetadataError) {
+      return Response.json({ error: error.message }, { status: error.statusCode });
+    }
+
+    throw error;
   }
 
   const rate = await checkRateLimit({ userId, artistId });
@@ -88,13 +134,36 @@ export async function POST(req: Request) {
           sandbox,
           prompt,
           resume_session_id,
-          (log: LogData) => send("log", log)
+          (log: LogData) => send("log", log),
+          artistId,
+          resolvedSessionMode,
+          resolvedIncuratorUserId
         );
 
         send("status", { phase: "snapshot_export" } satisfies StatusData);
         const manifest = await exportArtistSnapshot(sandbox, artistId);
+        let resumableSessionId = sessionId;
 
-        send("done", { ok: true, exitCode, sessionId, manifest });
+        if (sessionId) {
+          try {
+            await storeSessionMetadata(sessionId, {
+              artistId,
+              sessionMode: resolvedSessionMode,
+              incuratorUserId: resolvedIncuratorUserId,
+            });
+          } catch (error) {
+            console.error("[artist-os] Failed to store session metadata:", error);
+            resumableSessionId = undefined;
+          }
+        }
+
+        send("done", {
+          ok: true,
+          exitCode,
+          sessionId: resumableSessionId,
+          sessionMode: resolvedSessionMode,
+          manifest,
+        });
       } catch (error) {
         hadError = true;
         send("error", { message: String(error) });

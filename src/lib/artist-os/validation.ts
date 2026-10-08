@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SESSION_MODE_VALUES } from "./session-mode";
 
 // Strict artist_id validation to prevent:
 // - Path traversal (../, /)
@@ -21,6 +22,7 @@ export const QueryRequestSchema = z.object({
   artist_id: ArtistIdSchema,
   prompt: z.string().min(1).max(10000),
   resume_session_id: z.string().optional(),
+  session_mode: z.enum(SESSION_MODE_VALUES).optional(),
 });
 
 export type QueryRequest = z.infer<typeof QueryRequestSchema>;

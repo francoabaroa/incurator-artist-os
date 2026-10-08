@@ -2,16 +2,43 @@ import crypto from "crypto";
 import { Writable } from "stream";
 import type { Sandbox } from "@vercel/sandbox";
 import type { LogData } from "./types";
+import type { SessionMode } from "./session-mode";
 import { readSandboxFile } from "./snapshot";
 
 const WORKSPACE_ROOT = "/vercel/sandbox/workspace";
 const CLAUDE_CONFIG_DIR = `${WORKSPACE_ROOT}/.claude-state`;
+const LEGACY_REMOTE_BIO_FLAG = "ARTIST_OS_ENABLE_REMOTE_BIO_TOOL";
+
+function buildIncuratorBridgeConfigB64() {
+  const apiUrl = process.env.INCURATOR_API_URL?.trim();
+  const serviceToken = process.env.ARTIST_OS_SERVICE_TOKEN?.trim();
+
+  if (!apiUrl || !serviceToken) {
+    return undefined;
+  }
+
+  const enableRemoteTextTools =
+    process.env.ARTIST_OS_ENABLE_REMOTE_TEXT_TOOLS === "true" ||
+    process.env[LEGACY_REMOTE_BIO_FLAG] === "true";
+
+  return Buffer.from(
+    JSON.stringify({
+      apiUrl,
+      serviceToken,
+      enableRemoteTextTools,
+    }),
+    "utf-8"
+  ).toString("base64");
+}
 
 export async function runAgent(
   sandbox: Sandbox,
   prompt: string,
   resumeSessionId: string | undefined,
-  onLog: (log: LogData) => void
+  onLog: (log: LogData) => void,
+  artistId: string,
+  sessionMode: SessionMode,
+  incuratorUserId?: string
 ): Promise<{ exitCode: number; sessionId?: string }> {
   const runId = crypto.randomUUID();
   const promptB64 = Buffer.from(prompt, "utf-8").toString("base64");
@@ -29,7 +56,13 @@ export async function runAgent(
     WORKSPACE_ROOT,
     CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: "80",
     CLAUDE_CONFIG_DIR,
+    AGENT_ARTIST_ID: artistId,
+    SESSION_MODE: sessionMode,
   };
+
+  if (incuratorUserId) {
+    env.AGENT_INCURATOR_USER_ID = incuratorUserId;
+  }
 
   if (resumeSessionId) {
     env.RESUME_SESSION_ID = resumeSessionId;
@@ -39,6 +72,11 @@ export async function runAgent(
     env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
   } else {
     throw new Error("ANTHROPIC_API_KEY is required to run Artist OS agent");
+  }
+
+  const incuratorBridgeConfigB64 = buildIncuratorBridgeConfigB64();
+  if (incuratorBridgeConfigB64) {
+    env.INCURATOR_BRIDGE_CONFIG_B64 = incuratorBridgeConfigB64;
   }
 
   const result = await sandbox.runCommand({

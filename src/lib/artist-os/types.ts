@@ -1,6 +1,9 @@
+import type { SessionMode } from "./session-mode";
+
 // QueryRequest type is defined in validation.ts via Zod inference
 // Re-export it here for convenience
 export type { QueryRequest } from "./validation";
+export type { SessionMode } from "./session-mode";
 
 export type SSEEventName = "status" | "log" | "done" | "error";
 
@@ -22,6 +25,7 @@ export interface DoneData {
   ok: boolean;
   exitCode: number;
   sessionId?: string;
+  sessionMode: SessionMode;
   manifest: SnapshotManifest;
 }
 

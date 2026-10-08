@@ -8,6 +8,14 @@ import { safeWriteFile } from "./safe-fs";
 import { updateManifestEntry } from "./manifest";
 import { normalizeTaskStatuses } from "./normalization";
 import {
+  createIncuratorMcpConfig,
+  getSessionInstructions,
+  readIncuratorBridgeConfigFromEnv,
+  resolveSessionMode,
+  stripIncuratorBridgeEnv,
+  type SessionMode,
+} from "./runner-config";
+import {
   normalizeWorkspacePath as normalizeWorkspacePathBase,
   isProtectedPath,
   isAppendOnlyPath,
@@ -67,38 +75,59 @@ async function main() {
   const claudeMd = await loadFile("CLAUDE.md");
   const artistProfile = await loadFile("profile/artist.json");
   const progress = await loadFile("progress/claude-progress.md");
-  const featuresRaw = await loadFile(FEATURES_PATH);
+  const sessionMode: SessionMode = resolveSessionMode(process.env.SESSION_MODE);
+  const featuresRaw = sessionMode === "feature_flow" ? await loadFile(FEATURES_PATH) : "[]";
   const skillSummaries = await loadSkillSummaries();
+  const sessionInstructions = getSessionInstructions(sessionMode);
+  const incuratorBridgeConfig = readIncuratorBridgeConfigFromEnv();
+  const {
+    mcpServers,
+    allowedTools,
+    disabledNote: backendToolsDisabledNote,
+  } = createIncuratorMcpConfig(incuratorBridgeConfig);
 
-  const baselineFeatures = parseFeatures(featuresRaw);
+  const baselineFeatures = sessionMode === "feature_flow" ? parseFeatures(featuresRaw) : [];
   const nextFeature = baselineFeatures.find((feature) => !feature.passes);
-
-  const featureContext = nextFeature
-    ? `\n## Next Feature to Work On\n${JSON.stringify(nextFeature, null, 2)}`
-    : "\n## All Features Complete!\nReview and verify all features are working correctly.";
-
-  const systemContext = `
-${claudeMd}
-
-## Artist Profile
-${artistProfile}
-
-## Current Progress
-${progress}
-
-## Feature Status
+  const featureContext =
+    sessionMode === "feature_flow"
+      ? nextFeature
+        ? `## Feature Status
 Total: ${baselineFeatures.length}, Passing: ${baselineFeatures.filter((f) => f.passes).length}
-${featureContext}
 
-## Available Skills
-${skillSummaries}
+## Next Feature to Work On
+${JSON.stringify(nextFeature, null, 2)}`
+        : `## Feature Status
+Total: ${baselineFeatures.length}, Passing: ${baselineFeatures.filter((f) => f.passes).length}
 
-## Session Instructions
-1. Work on ONE feature at a time
-2. Test the feature thoroughly before marking passes: true
-3. Update progress notes after each significant step
-4. Do NOT remove or edit feature descriptions - only change passes status
-  `.trim();
+## All Features Complete!
+Review and verify all features are working correctly.`
+      : null;
+
+  const systemContextSections = [
+    claudeMd,
+    `## Artist Profile\n${artistProfile}`,
+    `## Current Progress\n${progress}`,
+    featureContext,
+    `## Available Skills\n${skillSummaries}`,
+    backendToolsDisabledNote
+      ? `## Remote App Tools Availability\n${backendToolsDisabledNote}`
+      : null,
+    `## Session Instructions\n${sessionInstructions}`,
+  ].filter((section): section is string => Boolean(section));
+
+  const systemContext = systemContextSections.join("\n\n").trim();
+
+  stripIncuratorBridgeEnv();
+  const queryTools = [
+    "Read",
+    "Glob",
+    "Grep",
+    "Write",
+    "Edit",
+    "MultiEdit",
+    "Bash",
+    ...(allowedTools ?? []),
+  ];
 
   const resumeSessionId = process.env.RESUME_SESSION_ID || undefined;
   if (resumeSessionId) {
@@ -118,11 +147,21 @@ ${skillSummaries}
       model: "claude-sonnet-4-5",
       systemPrompt: systemContext,
       cwd: WORKSPACE_ROOT,
-      tools: ["Read", "Glob", "Grep", "Write", "Edit", "MultiEdit", "Bash"],
+      tools: queryTools,
       disallowedTools: [],
+      mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined,
+      allowedTools,
       permissionMode: "acceptEdits",
       resume: resumeSessionId,
       canUseTool: async (toolName, input) => {
+        if (toolName.startsWith("mcp__incurator-tools__")) {
+          await appendAuditLog("mcp_tool_call", {
+            toolName,
+            input,
+          });
+          return { behavior: "allow" as const, updatedInput: input ?? {} };
+        }
+
         if (toolName === "Bash") {
           const command = String(input?.command ?? "");
 
@@ -307,7 +346,7 @@ ${skillSummaries}
                     }
                   }
 
-                  if (normalized?.relativePath === FEATURES_PATH) {
+                  if (sessionMode === "feature_flow" && normalized?.relativePath === FEATURES_PATH) {
                     await enforceFeatureList(normalized.fullPath, baselineFeatures);
                   }
                 }
