@@ -30,7 +30,12 @@ describe("checkRateLimit", () => {
     expect((await checkRateLimit({ userId: "user_1", artistId: "artist_1" })).ok).toBe(false);
   });
 
-  it.each([null, [], [[null, 1]], [[null, null], [null, 1], [null, 1], [null, 1]]].map((replies) => ({ replies })))( 
+  it.each([
+    { replies: null },
+    { replies: [] },
+    { replies: [[null, 1]] },
+    { replies: [[null, null], [null, 1], [null, 1], [null, 1]] },
+  ])(
     "blocks incomplete replies %#", async ({ replies }) => {
       execMock.mockResolvedValue(replies);
       expect((await checkRateLimit({ userId: "user_1", artistId: "artist_1" })).ok).toBe(false);
