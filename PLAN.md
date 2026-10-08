@@ -25,7 +25,7 @@ Each item gets a separate commit after affected tests, type checking and lint. A
 3. `workspace-template/.incurator/guardrails.ts`, `safe-fs.ts`, `incurator-tools.ts`, upload route: lexical path checks do not establish symlink confinement; Bash guards are not an OS security boundary. Harden filesystem capabilities and restore/archive boundaries together.
 4. `workspace-template/.incurator/archive.ts`, `incurator-agent-client.ts`, upload route: unbounded ZIP expansion/downloads and multipart buffering, no bridge request deadlines. Establish resource limits and cancellation for long operations.
 5. `src/app/api/artist-os/query/route.ts`, `sandbox.ts`: disconnect cleanup, nonzero agent exits reported with `ok: true`, post-save cleanup errors, process-local sandbox cache and force-released locks need a lifecycle/response-contract pass.
-6. `src/app/artist-os-console/json-render/parse.ts`, `JsonRenderBlock.tsx`, hooks: validate tree cycles and props, synchronize provider data, and test overlapping requests/storage failures.
+6. `src/app/artist-os-console/json-render/parse.ts`, `JsonRenderBlock.tsx`, hooks: validate tree cycles and props, verify provider synchronization and test overlapping requests/storage failures.
 7. `CLAUDE.md`, `README.md`, `package.json`, `.github/workflows/`: stale platform documentation, harness typecheck masks failures, no deterministic CI gate. Review supported SDK versions and separate app/harness validation.
 
 ## Progress
@@ -35,7 +35,7 @@ Each item gets a separate commit after affected tests, type checking and lint. A
 - [x] 2026-10-07: Redis reply validation; 10 affected tests and types/lint pass.
 - [x] 2026-10-07: Snapshot exit checks; four reproduced failure cases now stop safely; eight affected tests and types/lint pass.
 - [x] 2026-10-07: SSE chunk regression; every CRLF split and CR-only byte chunks pass, with types/lint.
-- [ ] Component test discovery.
+- [x] 2026-10-07: Component discovery includes both TSX suites (six tests); inline Streamdown to fix Shiki resolution under the literal asterisk checkout path; types/lint pass.
 - [ ] Full validation and final report.
 
 ## Decisions and outcomes

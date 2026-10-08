@@ -12,6 +12,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["**/__tests__/**/*.test.ts"],
+    // Resolve Streamdown's Shiki subpaths through Vite even in paths containing '*'.
+    server: { deps: { inline: ["streamdown"] } },
+    include: ["**/__tests__/**/*.test.{ts,tsx}"],
   },
 });
