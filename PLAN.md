@@ -36,8 +36,19 @@ Each item gets a separate commit after affected tests, type checking and lint. A
 - [x] 2026-10-07: Snapshot exit checks; four reproduced failure cases now stop safely; eight affected tests and types/lint pass.
 - [x] 2026-10-07: SSE chunk regression; every CRLF split and CR-only byte chunks pass, with types/lint.
 - [x] 2026-10-07: Component discovery includes both TSX suites (six tests); inline Streamdown to fix Shiki resolution under the literal asterisk checkout path; types/lint pass.
-- [ ] Full validation and final report.
+- [x] 2026-10-07: Full suite 29 files / 222 tests passes; TypeScript, lint and production build pass; local console HTTP smoke check passes. Browser automation unavailable because its kernel rejects the literal asterisk workspace path.
 
 ## Decisions and outcomes
 
-Keep public APIs, dependencies and intended successful flows unchanged. Larger security findings are recorded as code-level findings, not claims about live deployment exposure. Do not rebuild the external base snapshot. Revert only this batch's changes if a proposed fix cannot be validated. Final results pending.
+Keep public APIs, dependencies and intended successful flows unchanged. Larger security findings are recorded as code-level findings, not claims about live deployment exposure. Do not rebuild the external base snapshot. Revert only this batch's changes if a proposed fix cannot be validated. All five quick wins are committed; none reverted. No public API changes, new dependencies, external base-snapshot rebuilds, deployment, or real agent runs were performed. After the full suite, final fixture formatting was verified again with the affected tests, types and lint. The checkout is ready for review.
+
+
+## Verification notes
+
+Baseline had 198 tests in 27 suites. This batch adds 18 bug regressions and enables six existing component tests, yielding 222 tests in 29 suites. The production build completed all routes. Local `GET /artist-os-console` returned 200 and rendered console HTML; this is not a visual/browser-console check. Browser tooling failed before opening the page because its filesystem policy rejects a literal asterisk path. No UI layout changes were made.
+
+Commands: `pnpm test:all`, `pnpm tsc --noEmit`, `pnpm lint`, `pnpm build`, and `git diff --check`. Build required network-enabled execution to fetch the existing Geist fonts. No formatter script or standalone formatter is configured; ESLint and whitespace checks were used.
+
+Official documentation consulted alongside installed source: [ioredis transactions](https://github.com/redis/ioredis#transaction), [Vercel Sandbox command semantics](https://vercel.com/academy/vercel-sandbox/your-first-sandbox), and [Vitest 3 dependency inlining](https://v3.vitest.dev/config/#server-deps-inline). No package versions were changed.
+
+The existing ISSUES.md is a historical candidate list, not verified current truth: `JsonRenderBlock.tsx` already has `DataContextSync`, and the production build succeeds with the current CSS imports. Do not implement those listed fixes without reproducing a remaining defect.
