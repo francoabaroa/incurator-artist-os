@@ -67,10 +67,14 @@ export async function* streamSSE<T>(
       }
 
       buffer += decoder.decode(value, { stream: true });
+      // A trailing CR may be the first half of a CRLF in the next chunk.
+      // Keep it pending so the LF cannot become a spurious blank event line.
+      const pendingCR = buffer.endsWith("\r");
+      if (pendingCR) buffer = buffer.slice(0, -1);
       buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
       const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
+      buffer = (lines.pop() ?? "") + (pendingCR ? "\r" : "");
 
       for (const line of lines) {
         const event = processLine(line);
@@ -80,8 +84,9 @@ export async function* streamSSE<T>(
       }
     }
 
-    if (buffer) {
-      const event = processLine(buffer);
+    buffer += decoder.decode();
+    for (const line of buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n")) {
+      const event = processLine(line);
       if (event) {
         yield event;
       }

@@ -82,3 +82,20 @@ describe("streamSSE", () => {
     expect(events).toEqual([]);
   });
 });
+
+describe("SSE network chunk boundaries", () => {
+  it("preserves events for every split in CRLF framing", async () => {
+    const wire = 'event: status\r\ndata: {"phase":\r\ndata: "ready"}\r\n\r\n';
+    for (let split = 1; split < wire.length; split++) {
+      const events = await collectEvents(createResponse([wire.slice(0, split), wire.slice(split)]));
+      expect(events, `split at ${split}`).toEqual([{ event: "status", data: { phase: "ready" } }]);
+    }
+  });
+
+  it("handles one-byte chunks including CR-only line endings", async () => {
+    const wire = 'event: status\rdata: {"phase":"ready"}\r\r';
+    expect(await collectEvents(createResponse([...wire]))).toEqual([
+      { event: "status", data: { phase: "ready" } },
+    ]);
+  });
+});
