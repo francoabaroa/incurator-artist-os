@@ -3,6 +3,24 @@ name: music-production
 description: Technical guidance for recording, mixing, and mastering with systematic diagnosis frameworks. Use when artist asks about studio setup, DAW techniques, vocal chains, mix issues (muddy, harsh, flat), achieving professional sound, or any recording/production questions. Also triggers for plugin recommendations, acoustic treatment, gain staging, or troubleshooting audio problems.
 ---
 
+## Available Incurator Tools
+
+When the artist needs mastering done (not just advice about mastering), use the
+`incurator_master_track` MCP tool directly. Do not attempt to process audio yourself.
+
+### Mastering Workflow
+1. Confirm the artist has an audio file in the workspace (check `releases/` directory).
+2. If the file is missing, ask the artist to upload it through the Artist OS interface/API to `releases/`.
+3. Use `incurator_master_track` with the input path and desired output path.
+4. The tool handles upload, mastering, and saving the result automatically.
+5. Update `releases/releases.json` with the mastered file path if applicable.
+6. Inform the artist of the result and output location.
+
+### When NOT to use the tool
+- When the artist is asking for advice about mastering techniques (provide guidance instead).
+- When the artist wants to understand mastering concepts (use your knowledge).
+- When no audio file exists in the workspace yet.
+
 # Music Production
 
 Expert guidance for music creation from recording through final master, with systematic problem-solving frameworks.

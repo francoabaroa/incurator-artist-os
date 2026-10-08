@@ -3,6 +3,11 @@ name: marketing-copy
 description: Brand voice guidance and templates for social posts, bios, announcements, and all public-facing content. Use when artist asks for captions, copy, announcement text, bio updates, or any written content for social media, websites, or marketing materials. Also triggers for social media planning, hook writing, or CTA optimization.
 ---
 
+## Tool Policy
+
+Marketing copy generation is local-first in Artist OS. Draft and revise copy directly in
+workspace files; do not assume remote text-copy tools are available.
+
 # Marketing Copy Skill
 
 Expert copywriting for music marketing with brand voice frameworks and platform-specific optimization.

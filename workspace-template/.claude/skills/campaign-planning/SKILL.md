@@ -3,6 +3,11 @@ name: campaign-planning
 description: Strategic planning for marketing campaigns with budget allocation frameworks and content calendars. Use when artist wants to plan a rollout, promotional initiative, release campaign, or asks about marketing strategy, content planning, advertising, or promotional spend. Also triggers for questions about TikTok campaigns, Instagram strategy, or any platform-specific marketing.
 ---
 
+## Tool Policy
+
+Campaign planning in Artist OS is local-first. Build plans directly in workspace files using
+this skill. Do not assume a remote campaign-generation tool is available.
+
 # Campaign Planning
 
 Strategic frameworks for planning, executing, and measuring music marketing campaigns.

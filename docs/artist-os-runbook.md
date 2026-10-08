@@ -109,7 +109,7 @@ When resuming, the log stream will include a line like:
 Resuming session: session-abc123
 ```
 
-The follow-up response will have full context from the previous conversation.
+The follow-up response will have full context from the previous conversation. When stored session metadata is available, the original `session_mode` is preserved automatically. If the metadata is missing or the request tries to change the stored backend actor, the resume is rejected with `400` instead of continuing unsafely.
 
 ## Artist OS Console (Dev)
 
@@ -124,3 +124,48 @@ Run the web console for end-to-end testing:
 The console auto-fills `x-artist-ids` with the artist ID by default. Uncheck the option to test ownership mismatches.
 
 The Message History also renders json-render fenced blocks into structured UI. Ask the agent to include a json-render fence in its response to see cards, tables, timelines, or checklists instead of raw JSON.
+
+## Agent Tool Bridge (Local)
+
+To enable backend tool execution from Artist OS sessions:
+
+1. Configure both repos with the same `ARTIST_OS_SERVICE_TOKEN`.
+2. Set `INCURATOR_API_URL` in `incurator-artist-os/.env.local` to a host that is reachable from the sandbox runtime. `http://localhost:3001` only works when the sandbox can actually reach that address; local development may require a tunnel or another reachable host alias.
+3. By default, only backend processing tools (for example mastering) are enabled. Text tools remain local-first.
+4. Optional: set `ARTIST_OS_ENABLE_REMOTE_TEXT_TOOLS=true` to enable remote text generation tools.
+5. Start `incurator-app` on port 3001.
+6. Start `incurator-artist-os` on port 3000.
+
+App-backed tools also require the numeric internal Incurator user id on each run. Provide it with `x-incurator-user-id`. If you omit that header, the session still works, but mastering and other backend tools are intentionally disabled.
+
+Test mastering flow via SSE after uploading audio to `releases/`:
+
+```
+curl -X POST http://localhost:3000/api/artist-os/query \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: user_test123" \
+  -H "x-incurator-user-id: 123" \
+  -d '{"artist_id":"user_test123_artist","prompt":"Master releases/track.wav and save to releases/track-mastered.wav","session_mode":"artist_ops"}' \
+  --no-buffer
+```
+
+Optional remote bio generation test (only when `ARTIST_OS_ENABLE_REMOTE_TEXT_TOOLS=true`):
+
+```
+curl -X POST http://localhost:3000/api/artist-os/query \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: user_test123" \
+  -H "x-incurator-user-id: 123" \
+  -d '{"artist_id":"user_test123_artist","prompt":"Generate a professional bio and save it to brand/bio.md","session_mode":"artist_ops"}' \
+  --no-buffer
+```
+
+Upload audio into workspace before mastering:
+
+```
+curl -X POST http://localhost:3000/api/artist-os/files/upload \
+  -H "x-user-id: user_test123" \
+  -F "artist_id=user_test123_artist" \
+  -F "file=@/absolute/path/to/track.wav" \
+  -F "path=releases/track.wav"
+```

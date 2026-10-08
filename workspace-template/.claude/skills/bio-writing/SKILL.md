@@ -3,6 +3,27 @@ name: bio-writing
 description: Artist bio creation with multiple style frameworks and platform-specific formats. Use when artist needs a bio for Spotify, Apple Music, social media, press kit, website, or any platform. Triggers for "about me," "artist statement," "one-liner," bio updates, or rewrites. Also handles identity-related copy like taglines and elevator pitches.
 ---
 
+## Text Tool Policy
+
+Bio drafting in Artist OS is local-first. By default, write/edit bios directly in workspace
+files using this skill.
+
+`incurator_generate_bio` is optional and should only be used when the remote text tool is
+explicitly enabled by operators.
+
+### Bio Workflow
+1. Read `profile/artist.json` to confirm artist data is available.
+2. Determine the requested format and tone.
+3. Draft/edit the bio directly in workspace files (for example `brand/bio.md`).
+4. If remote text tools are enabled and the artist requests generated output, use
+   `incurator_generate_bio` and save to a workspace path.
+5. Present the result for review and iterate.
+
+### When NOT to use `incurator_generate_bio`
+- Remote text tools are not enabled.
+- The artist wants collaborative editing rather than full regeneration.
+- The task is feedback/review of an existing draft.
+
 # Bio Writing
 
 Professional artist bio creation with style frameworks, platform-specific formats, and voice calibration.

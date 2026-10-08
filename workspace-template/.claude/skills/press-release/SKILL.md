@@ -3,6 +3,13 @@ name: press-release
 description: Professional AP-style press release creation for music releases, events, and announcements. Use when artist needs a formal announcement for press, blogs, media outlets, or PR distribution. Also triggers for questions about media outreach, press kits, or how to announce news professionally.
 ---
 
+## Available Incurator Tools
+
+Press-release writing is local-first in Artist OS.
+
+`incurator_generate_press_release` is planned for a future update but is not available yet.
+Draft and iterate press releases directly in workspace files using this skill's workflow.
+
 # Press Release
 
 Professional, AP-style press release creation for music industry announcements.
