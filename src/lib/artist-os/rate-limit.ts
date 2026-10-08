@@ -54,12 +54,20 @@ export async function checkRateLimit(
   pipeline.pexpireat(artistKey, windowEnd);
 
   const results = await pipeline.exec();
-  if (!results) {
+  // EXEC can resolve successfully while individual commands fail. Missing or
+  // failed replies cannot establish that this request is within either limit.
+  if (!results || results.length !== 4 || results.some(([error]) => error)) {
     return { ok: false };
   }
 
-  const userCount = Number(results[0]?.[1] ?? 0);
-  const artistCount = Number(results[2]?.[1] ?? 0);
+  const userCount = results[0][1];
+  const artistCount = results[2][1];
+  if (
+    typeof userCount !== "number" || !Number.isSafeInteger(userCount) || userCount < 1 ||
+    typeof artistCount !== "number" || !Number.isSafeInteger(artistCount) || artistCount < 1
+  ) {
+    return { ok: false };
+  }
 
   const ok = userCount <= userLimit && artistCount <= artistLimit;
 

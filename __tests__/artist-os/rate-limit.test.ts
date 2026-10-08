@@ -23,6 +23,20 @@ describe("checkRateLimit", () => {
     execMock.mockReset();
   });
 
+  it.each([0, 1, 2, 3])("blocks a Redis command error at reply %s", async (index) => {
+    const replies: [Error | null, number | null][] = Array.from({ length: 4 }, () => [null, 1]);
+    replies[index] = [new Error("Redis command failed"), null];
+    execMock.mockResolvedValue(replies);
+    expect((await checkRateLimit({ userId: "user_1", artistId: "artist_1" })).ok).toBe(false);
+  });
+
+  it.each([null, [], [[null, 1]], [[null, null], [null, 1], [null, 1], [null, 1]]].map((replies) => ({ replies })))( 
+    "blocks incomplete replies %#", async ({ replies }) => {
+      execMock.mockResolvedValue(replies);
+      expect((await checkRateLimit({ userId: "user_1", artistId: "artist_1" })).ok).toBe(false);
+    }
+  );
+
   it("allows when under limits", async () => {
     process.env.ARTIST_OS_RATE_LIMIT_USER = "5";
     process.env.ARTIST_OS_RATE_LIMIT_ARTIST = "5";

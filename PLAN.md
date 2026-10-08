@@ -6,7 +6,7 @@ This checkout is a small Next.js 16.1.1 / React 19.2.3 Artist OS experiment, not
 
 The query flow validates input, reads header identity, checks artist ownership, resolves Redis session metadata, rate-limits and locks the artist, restores Blob snapshots into a sandbox, streams Claude logs, exports a snapshot, and releases resources. Upload shares the lock/snapshot lifecycle. Admin routes inspect/reset pointers and stop cached sandboxes. The console persists prompt history locally and renders agent-generated JSON. The harness applies file guards, schemas, manifests and audit logs; its bridge calls Incurator's versioned API.
 
-Survey covered routes and core libraries in depth, console state/parsing/actions, render components, harness guards/client/tools/archive handling, templates, build scripts, dependencies, configs, workflows, tests and active plans. Installed dependency source confirmed ioredis tuple errors and Sandbox command exit-code semantics. Existing work was preserved in seven focused commits before this batch. Baseline: 27 files / 198 tests pass; TypeScript and lint pass. Baseline build is still running.
+Survey covered routes and core libraries in depth, console state/parsing/actions, render components, harness guards/client/tools/archive handling, templates, build scripts, dependencies, configs, workflows, tests and active plans. Installed dependency source confirmed ioredis tuple errors and Sandbox command exit-code semantics. Existing work was preserved in seven focused commits before this batch. Baseline: 27 files / 198 tests pass; TypeScript and lint pass. Build passes with network access for Google Fonts; restricted-network attempt failed downloading fonts.
 
 ## Ordered quick wins
 
@@ -32,7 +32,7 @@ Each item gets a separate commit after affected tests, type checking and lint. A
 
 - [x] 2026-10-07: Survey and existing-work commits; baseline tests/types/lint green.
 - [x] 2026-10-07: Prototype patch guard; four regressions fail before and pass after; types/lint pass.
-- [ ] Redis reply validation.
+- [x] 2026-10-07: Redis reply validation; 10 affected tests and types/lint pass.
 - [ ] Snapshot exit checks.
 - [ ] SSE chunk regression.
 - [ ] Component test discovery.
