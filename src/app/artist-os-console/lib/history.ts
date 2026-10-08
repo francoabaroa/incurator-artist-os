@@ -1,4 +1,5 @@
-import type { HistoryEntry } from "./types";
+import type { ConsoleQueryParams, HistoryEntry } from "./types";
+import { isSessionMode } from "@/lib/artist-os/session-mode";
 
 export const HISTORY_STORAGE_KEY = "artist-os-console-history";
 export const MAX_HISTORY_ENTRIES = 50;
@@ -75,8 +76,15 @@ function toHistoryEntry(value: unknown): HistoryEntry | null {
     id: record.id,
     timestamp: record.timestamp,
     userId: record.userId,
+    incuratorUserId:
+      typeof record.incuratorUserId === "string"
+        ? record.incuratorUserId
+        : undefined,
     artistId: record.artistId,
     prompt: record.prompt,
+    sessionMode: isSessionMode(record.sessionMode)
+      ? record.sessionMode
+      : undefined,
     resumeSessionId:
       typeof record.resumeSessionId === "string"
         ? record.resumeSessionId
@@ -196,7 +204,7 @@ export function clearHistory(storage?: Storage | null): void {
 
 export function updateHistoryEntry(
   id: string,
-  updates: Partial<Pick<HistoryEntry, "sessionId">>,
+  updates: Partial<Pick<HistoryEntry, "sessionId" | "sessionMode">>,
   storage?: Storage | null
 ): HistoryEntry[] {
   const current = readHistory(storage);
@@ -205,4 +213,21 @@ export function updateHistoryEntry(
   );
   writeHistory(updated, storage);
   return updated;
+}
+
+export function getHistorySelectionDefaults(
+  entry: HistoryEntry
+): Partial<ConsoleQueryParams> {
+  const resumeSessionId = entry.sessionMode
+    ? entry.sessionId ?? entry.resumeSessionId
+    : undefined;
+
+  return {
+    userId: entry.userId,
+    incuratorUserId: entry.incuratorUserId,
+    artistId: entry.artistId,
+    prompt: entry.prompt,
+    sessionMode: entry.sessionMode,
+    resumeSessionId,
+  };
 }

@@ -77,6 +77,15 @@ function buildErrorMessage(value: unknown, status: number): string {
   return `HTTP ${status}`;
 }
 
+export function buildConsoleQueryRequestBody(params: ConsoleQueryParams) {
+  return {
+    artist_id: params.artistId,
+    prompt: params.prompt,
+    session_mode: params.sessionMode,
+    resume_session_id: params.resumeSessionId || undefined,
+  };
+}
+
 export function useSseStream() {
   const [state, setState] = useState<ConsoleRunState>({
     phase: null,
@@ -112,6 +121,9 @@ export function useSseStream() {
         "Content-Type": "application/json",
         "x-user-id": params.userId,
       };
+      if (params.incuratorUserId?.trim()) {
+        headers["x-incurator-user-id"] = params.incuratorUserId.trim();
+      }
 
       // Only set x-artist-ids if explicitly provided (allows testing auth without ownership header)
       const ownedIds = params.ownedArtistIds?.trim();
@@ -122,11 +134,7 @@ export function useSseStream() {
       const response = await fetch("/api/artist-os/query", {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          artist_id: params.artistId,
-          prompt: params.prompt,
-          resume_session_id: params.resumeSessionId || undefined,
-        }),
+        body: JSON.stringify(buildConsoleQueryRequestBody(params)),
         signal: controller.signal,
       });
 

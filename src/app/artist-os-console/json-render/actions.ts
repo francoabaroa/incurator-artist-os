@@ -1,10 +1,12 @@
 import type { ActionConfirm, ActionHandler } from "@json-render/core";
+import type { SessionMode } from "@/lib/artist-os/session-mode";
 
 export interface ApplyPromptOptions {
   userId?: string | null;
   artistId?: string | null;
   resumeSessionId?: string | null;
   ownedArtistIds?: string | null;
+  sessionMode?: SessionMode | null;
 }
 
 export interface JsonRenderActionContext {
@@ -56,6 +58,7 @@ export function buildActionHandlers(
         artistId?: string | null;
         resumeSessionId?: string | null;
         ownedArtistIds?: string | null;
+        sessionMode?: SessionMode | null;
       };
 
       const prompt = String(payload.prompt ?? "");
@@ -69,6 +72,7 @@ export function buildActionHandlers(
         artistId: payload.artistId ?? null,
         resumeSessionId: payload.resumeSessionId ?? null,
         ownedArtistIds: payload.ownedArtistIds ?? null,
+        sessionMode: payload.sessionMode ?? null,
       });
       context.notify?.("Prompt applied", "success");
     },

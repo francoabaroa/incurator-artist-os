@@ -11,15 +11,50 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { DEFAULT_SESSION_MODE } from "@/lib/artist-os/session-mode";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import PromptHistory from "./components/PromptHistory";
 import QueryForm from "./components/QueryForm";
 import ResultPanel from "./components/ResultPanel";
 import StreamViewer from "./components/StreamViewer";
 import { usePromptHistory } from "./hooks/use-prompt-history";
+import { getHistorySelectionDefaults } from "./lib/history";
 import { useSseStream } from "./hooks/use-sse-stream";
 import type { ConsoleQueryParams, HistoryEntry } from "./lib/types";
 import type { ApplyPromptOptions } from "./json-render/actions";
+
+export function buildApplyPromptDefaults(
+  current: Partial<ConsoleQueryParams>,
+  lastRequest: ConsoleQueryParams | null,
+  prompt: string,
+  options?: ApplyPromptOptions
+): Partial<ConsoleQueryParams> {
+  return {
+    userId: options?.userId ?? current.userId ?? lastRequest?.userId ?? "",
+    incuratorUserId:
+      current.incuratorUserId ??
+      lastRequest?.incuratorUserId ??
+      "",
+    artistId:
+      options?.artistId ?? current.artistId ?? lastRequest?.artistId ?? "",
+    ownedArtistIds:
+      options?.ownedArtistIds ??
+      current.ownedArtistIds ??
+      lastRequest?.ownedArtistIds ??
+      "",
+    resumeSessionId:
+      options?.resumeSessionId ??
+      current.resumeSessionId ??
+      lastRequest?.resumeSessionId ??
+      "",
+    sessionMode:
+      options?.sessionMode ??
+      current.sessionMode ??
+      lastRequest?.sessionMode ??
+      DEFAULT_SESSION_MODE,
+    prompt,
+  };
+}
 
 const MessageHistory = dynamic(
   () => import("./components/MessageHistory").then((mod) => mod.default),
@@ -76,6 +111,7 @@ export default function ConsoleShell() {
   const { entries, add, update, clear } = usePromptHistory();
   const lastHistoryIdRef = useRef<string | null>(null);
   const latestSessionId = state.result?.sessionId;
+  const latestSessionMode = state.result?.sessionMode;
   const dataContext = useMemo(
     () => ({
       phase: state.phase,
@@ -87,18 +123,23 @@ export default function ConsoleShell() {
   useEffect(() => {
     const lastHistoryId = lastHistoryIdRef.current;
     if (lastHistoryId && !state.isStreaming && state.result?.sessionId) {
-      update(lastHistoryId, { sessionId: state.result.sessionId });
+      update(lastHistoryId, {
+        sessionId: state.result.sessionId,
+        sessionMode: state.result.sessionMode,
+      });
       lastHistoryIdRef.current = null;
     }
-  }, [state.isStreaming, state.result?.sessionId, update]);
+  }, [state.isStreaming, state.result?.sessionId, state.result?.sessionMode, update]);
 
   const handleSubmit = useCallback(
     (params: ConsoleQueryParams) => {
       setLastRequest(params);
       const entryId = add({
         userId: params.userId,
+        incuratorUserId: params.incuratorUserId,
         artistId: params.artistId,
         prompt: params.prompt,
+        sessionMode: params.sessionMode,
         resumeSessionId: params.resumeSessionId,
       });
       lastHistoryIdRef.current = entryId;
@@ -108,33 +149,15 @@ export default function ConsoleShell() {
   );
 
   const handleSelectHistory = useCallback((entry: HistoryEntry) => {
-    setFormDefaults({
-      userId: entry.userId,
-      artistId: entry.artistId,
-      prompt: entry.prompt,
-      resumeSessionId: entry.sessionId ?? entry.resumeSessionId,
-    });
+    setFormDefaults(getHistorySelectionDefaults(entry));
     setFormSeed((seed) => seed + 1);
   }, []);
 
   const handleApplyPrompt = useCallback(
     (prompt: string, options?: ApplyPromptOptions) => {
-      setFormDefaults((current) => ({
-        userId: options?.userId ?? current.userId ?? lastRequest?.userId ?? "",
-        artistId:
-          options?.artistId ?? current.artistId ?? lastRequest?.artistId ?? "",
-        ownedArtistIds:
-          options?.ownedArtistIds ??
-          current.ownedArtistIds ??
-          lastRequest?.ownedArtistIds ??
-          "",
-        resumeSessionId:
-          options?.resumeSessionId ??
-          current.resumeSessionId ??
-          lastRequest?.resumeSessionId ??
-          "",
-        prompt,
-      }));
+      setFormDefaults((current) =>
+        buildApplyPromptDefaults(current, lastRequest, prompt, options)
+      );
       setFormSeed((seed) => seed + 1);
     },
     [lastRequest]
@@ -187,6 +210,7 @@ export default function ConsoleShell() {
                   initialValues={formDefaults}
                   isStreaming={state.isStreaming}
                   latestSessionId={latestSessionId}
+                  latestSessionMode={latestSessionMode}
                   onStop={stop}
                   onSubmit={handleSubmit}
                 />

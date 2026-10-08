@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   appendHistory,
   clearHistory,
+  getHistorySelectionDefaults,
   readHistory,
   updateHistoryEntry,
   writeHistory,
@@ -43,8 +44,10 @@ function buildEntry(index: number): HistoryEntry {
     id: `entry-${index}`,
     timestamp: new Date(2026, 0, 1, 0, 0, index).toISOString(),
     userId: `user-${index}`,
+    incuratorUserId: `${100 + index}`,
     artistId: `artist-${index}`,
     prompt: `Prompt ${index}`,
+    sessionMode: index % 2 === 0 ? "artist_ops" : "feature_flow",
     resumeSessionId: index % 2 === 0 ? `session-${index}` : undefined,
     sessionId: index % 2 === 1 ? `session-out-${index}` : undefined,
   };
@@ -94,18 +97,64 @@ describe("history storage", () => {
     expect(readHistory(storage)).toEqual([]);
   });
 
-  it("updates sessionId for an entry", () => {
+  it("updates session metadata for an entry", () => {
     const storage = new MemoryStorage();
     const entry = buildEntry(1);
     writeHistory([entry], storage);
 
     const updated = updateHistoryEntry(
       entry.id,
-      { sessionId: "session-out-99" },
+      {
+        sessionId: "session-out-99",
+        sessionMode: "artist_ops",
+      },
       storage
     );
 
     expect(updated[0]?.sessionId).toBe("session-out-99");
+    expect(updated[0]?.sessionMode).toBe("artist_ops");
     expect(readHistory(storage)[0]?.sessionId).toBe("session-out-99");
+    expect(readHistory(storage)[0]?.sessionMode).toBe("artist_ops");
+  });
+
+  it("does not prefill resume id for legacy entries without a stored mode", () => {
+    const defaults = getHistorySelectionDefaults({
+      id: "legacy-1",
+      timestamp: new Date().toISOString(),
+      userId: "user-1",
+      artistId: "artist-1",
+      prompt: "Continue working",
+      sessionId: "session-legacy",
+    });
+
+    expect(defaults).toEqual({
+      userId: "user-1",
+      artistId: "artist-1",
+      prompt: "Continue working",
+      sessionMode: undefined,
+      resumeSessionId: undefined,
+    });
+  });
+
+  it("prefills resume state when mode metadata is present", () => {
+    const defaults = getHistorySelectionDefaults({
+      id: "entry-1",
+      timestamp: new Date().toISOString(),
+      userId: "user-1",
+      incuratorUserId: "101",
+      artistId: "artist-1",
+      prompt: "Continue working",
+      sessionMode: "feature_flow",
+      sessionId: "session-current",
+    });
+
+    expect(defaults).toEqual({
+      userId: "user-1",
+      incuratorUserId: "101",
+      artistId: "artist-1",
+      prompt: "Continue working",
+      sessionMode: "feature_flow",
+      resumeSessionId: "session-current",
+    });
   });
 });

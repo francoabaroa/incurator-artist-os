@@ -115,6 +115,14 @@ function ResultPanel({
                   {result.sessionId ?? "-"}
                 </dd>
               </div>
+              <div>
+                <dt className="text-[10px] uppercase tracking-[0.2em] text-[var(--console-text-muted)]">
+                  Session Mode
+                </dt>
+                <dd className="mt-1 font-mono text-xs text-[var(--console-text)]">
+                  {result.sessionMode}
+                </dd>
+              </div>
             </dl>
           </div>
         </div>

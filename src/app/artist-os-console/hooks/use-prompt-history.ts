@@ -37,7 +37,10 @@ export function usePromptHistory() {
   );
 
   const update = useCallback(
-    (id: string, updates: Partial<Pick<HistoryEntry, "sessionId">>) => {
+    (
+      id: string,
+      updates: Partial<Pick<HistoryEntry, "sessionId" | "sessionMode">>
+    ) => {
       const current = readHistorySnapshot();
       const updated = current.map((entry) =>
         entry.id === id ? { ...entry, ...updates } : entry

@@ -4,12 +4,15 @@ import type {
   LogData,
   StatusData,
 } from "@/lib/artist-os/types";
+import type { SessionMode } from "@/lib/artist-os/session-mode";
 
 export interface ConsoleQueryParams {
   userId: string;
+  incuratorUserId?: string;
   artistId: string;
   ownedArtistIds?: string;
   prompt: string;
+  sessionMode: SessionMode;
   resumeSessionId?: string;
 }
 
@@ -43,8 +46,10 @@ export interface HistoryEntry {
   id: string;
   timestamp: string;
   userId: string;
+  incuratorUserId?: string;
   artistId: string;
   prompt: string;
+  sessionMode?: SessionMode;
   resumeSessionId?: string;
   sessionId?: string;
 }

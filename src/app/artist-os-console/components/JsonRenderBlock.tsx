@@ -12,6 +12,7 @@ import {
 } from "@json-render/react";
 import type { UITree } from "@json-render/core";
 import type { ActionHandler } from "@json-render/core";
+import type { SessionMode } from "@/lib/artist-os/session-mode";
 import { artistOSRegistry, parseJsonRenderContent } from "../json-render";
 import type { ApplyPromptOptions } from "../json-render/actions";
 import type { ComponentRenderProps } from "@json-render/react";
@@ -136,6 +137,7 @@ export default function JsonRenderBlock({
         artistId?: string | null;
         resumeSessionId?: string | null;
         ownedArtistIds?: string | null;
+        sessionMode?: SessionMode | null;
       };
       const prompt = String(payload.prompt ?? "");
       if (!prompt) {
@@ -147,6 +149,7 @@ export default function JsonRenderBlock({
         artistId: payload.artistId ?? null,
         resumeSessionId: payload.resumeSessionId ?? null,
         ownedArtistIds: payload.ownedArtistIds ?? null,
+        sessionMode: payload.sessionMode ?? null,
       });
       notifyRef.current?.("Prompt applied");
     },

@@ -61,8 +61,18 @@ function PromptHistory({
               <p className="mt-2 max-h-10 overflow-hidden text-xs text-[var(--console-text-muted)]">
                 {entry.prompt}
               </p>
-              {entry.resumeSessionId ? (
+              {entry.sessionMode ? (
                 <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-[var(--console-text-muted)]">
+                  Mode: {entry.sessionMode}
+                </p>
+              ) : null}
+              {entry.incuratorUserId ? (
+                <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-[var(--console-text-muted)]">
+                  Incurator User: {entry.incuratorUserId}
+                </p>
+              ) : null}
+              {entry.resumeSessionId ? (
+                <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-[var(--console-text-muted)]">
                   Resume: {entry.resumeSessionId}
                 </p>
               ) : null}

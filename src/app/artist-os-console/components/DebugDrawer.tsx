@@ -96,6 +96,9 @@ export default function DebugDrawer({
   const headersSummary = [
     "Content-Type: application/json",
     request?.userId ? `x-user-id: ${request.userId}` : "x-user-id: -",
+    request?.incuratorUserId
+      ? `x-incurator-user-id: ${request.incuratorUserId}`
+      : "x-incurator-user-id: -",
     ownedIds ? `x-artist-ids: ${ownedIds}` : "x-artist-ids: -",
   ].join("\n");
 
@@ -351,10 +354,26 @@ export default function DebugDrawer({
               </div>
               <div>
                 <span className="uppercase tracking-[0.2em] text-[var(--console-text-muted)]">
+                  Session Mode (input)
+                </span>
+                <p className="mt-1 font-mono text-[var(--console-text)]">
+                  {request?.sessionMode || "-"}
+                </p>
+              </div>
+              <div>
+                <span className="uppercase tracking-[0.2em] text-[var(--console-text-muted)]">
                   Resume ID (input)
                 </span>
                 <p className="mt-1 break-all font-mono text-[var(--console-text)]">
                   {request?.resumeSessionId || "-"}
+                </p>
+              </div>
+              <div>
+                <span className="uppercase tracking-[0.2em] text-[var(--console-text-muted)]">
+                  Session Mode (output)
+                </span>
+                <p className="mt-1 font-mono text-[var(--console-text)]">
+                  {runState.result?.sessionMode || "-"}
                 </p>
               </div>
               <div>

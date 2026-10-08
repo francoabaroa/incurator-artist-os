@@ -1,5 +1,6 @@
 import { createCatalog } from "@json-render/core";
 import { z } from "zod";
+import { SESSION_MODE_VALUES } from "@/lib/artist-os/session-mode";
 
 export const ToneSchema = z.enum([
   "default",
@@ -718,6 +719,7 @@ export const artistOSCatalog = createCatalog({
         artistId: z.string().nullable(),
         resumeSessionId: z.string().nullable(),
         ownedArtistIds: z.string().nullable(),
+        sessionMode: z.enum(SESSION_MODE_VALUES).nullable(),
       }),
       description: "Apply prompt to console form",
     },
