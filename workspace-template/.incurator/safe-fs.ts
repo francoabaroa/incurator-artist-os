@@ -3,7 +3,9 @@ import * as path from "path";
 import { appendCommitLog } from "./audit";
 import { updateManifestEntry } from "./manifest";
 
-const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? "/vercel/sandbox/workspace";
+function getWorkspaceRoot() {
+  return process.env.WORKSPACE_ROOT ?? "/vercel/sandbox/workspace";
+}
 
 const PROTECTED_PATHS = [
   "CLAUDE.md",
@@ -20,14 +22,15 @@ const APPEND_ONLY_PATHS = [
 interface WriteOptions {
   allowOverwrite?: boolean;
   forceWrite?: boolean;
+  toolName?: string;
 }
 
 export async function safeWriteFile(
   relativePath: string,
-  content: string,
+  content: string | Buffer,
   options: WriteOptions = {}
 ): Promise<{ success: true; action: "create" | "update" }> {
-  const { allowOverwrite = false, forceWrite = false } = options;
+  const { allowOverwrite = false, forceWrite = false, toolName = "safeWriteFile" } = options;
 
   if (relativePath.includes("..") || relativePath.startsWith("/")) {
     throw new Error(`Path traversal blocked: ${relativePath}`);
@@ -41,7 +44,7 @@ export async function safeWriteFile(
     throw new Error(`Hidden file access blocked: ${relativePath}`);
   }
 
-  const fullPath = path.join(WORKSPACE_ROOT, relativePath);
+  const fullPath = path.join(getWorkspaceRoot(), relativePath);
 
   let fileExists = false;
   try {
@@ -76,10 +79,14 @@ export async function safeWriteFile(
   }
 
   await fs.mkdir(path.dirname(fullPath), { recursive: true });
-  await fs.writeFile(fullPath, content, "utf-8");
+  if (Buffer.isBuffer(content)) {
+    await fs.writeFile(fullPath, content);
+  } else {
+    await fs.writeFile(fullPath, content, "utf-8");
+  }
 
   const action = fileExists ? "update" : "create";
-  await appendCommitLog(relativePath, action, content, "safeWriteFile");
+  await appendCommitLog(relativePath, action, content, toolName);
   await updateManifestEntry(relativePath, content);
 
   return { success: true, action };
@@ -110,7 +117,7 @@ export async function safeAppendFile(
     throw new Error(`Cannot append to protected path: ${relativePath}`);
   }
 
-  const fullPath = path.join(WORKSPACE_ROOT, relativePath);
+  const fullPath = path.join(getWorkspaceRoot(), relativePath);
   await fs.mkdir(path.dirname(fullPath), { recursive: true });
   await fs.appendFile(fullPath, content, "utf-8");
 
@@ -136,7 +143,7 @@ export async function safeReadFile(relativePath: string): Promise<string | null>
   }
 
   try {
-    return await fs.readFile(path.join(WORKSPACE_ROOT, relativePath), "utf-8");
+    return await fs.readFile(path.join(getWorkspaceRoot(), relativePath), "utf-8");
   } catch {
     return null;
   }
@@ -149,11 +156,12 @@ export async function safeListDirectory(
     throw new Error(`Path traversal blocked: ${relativePath}`);
   }
 
-  const fullPath = path.join(WORKSPACE_ROOT, relativePath || ".");
+  const workspaceRoot = getWorkspaceRoot();
+  const fullPath = path.join(workspaceRoot, relativePath || ".");
 
   // Double-check the resolved path is still within workspace (defense in depth)
   const resolved = path.resolve(fullPath);
-  if (!resolved.startsWith(WORKSPACE_ROOT)) {
+  if (!resolved.startsWith(workspaceRoot)) {
     throw new Error(`Path traversal blocked: ${relativePath}`);
   }
 

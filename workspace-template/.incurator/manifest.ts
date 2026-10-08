@@ -2,8 +2,13 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { createHash } from "crypto";
 
-const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? "/vercel/sandbox/workspace";
-const MANIFEST_PATH = path.join(WORKSPACE_ROOT, ".index", "manifest.json");
+function getWorkspaceRoot() {
+  return process.env.WORKSPACE_ROOT ?? "/vercel/sandbox/workspace";
+}
+
+function getManifestPath() {
+  return path.join(getWorkspaceRoot(), ".index", "manifest.json");
+}
 
 const DEFAULT_HOT_FILES = [
   "CLAUDE.md",
@@ -26,12 +31,12 @@ export interface WorkspaceManifest {
 }
 
 export async function readManifest(): Promise<WorkspaceManifest> {
-  const content = await fs.readFile(MANIFEST_PATH, "utf-8");
+  const content = await fs.readFile(getManifestPath(), "utf-8");
   return JSON.parse(content) as WorkspaceManifest;
 }
 
 export async function writeManifest(manifest: WorkspaceManifest) {
-  await fs.writeFile(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
+  await fs.writeFile(getManifestPath(), JSON.stringify(manifest, null, 2));
 }
 
 export async function ensureManifest(): Promise<WorkspaceManifest> {
@@ -44,7 +49,7 @@ export async function ensureManifest(): Promise<WorkspaceManifest> {
       files: {},
       hotFiles: DEFAULT_HOT_FILES,
     };
-    await fs.mkdir(path.dirname(MANIFEST_PATH), { recursive: true });
+    await fs.mkdir(path.dirname(getManifestPath()), { recursive: true });
     await writeManifest(manifest);
     return manifest;
   }

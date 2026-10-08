@@ -3,8 +3,13 @@ import * as path from "path";
 import { createHash } from "crypto";
 import { updateManifestEntry } from "./manifest";
 
-const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? "/vercel/sandbox/workspace";
-const COMMITS_LOG = path.join(WORKSPACE_ROOT, ".trace", "commits.jsonl");
+function getWorkspaceRoot() {
+  return process.env.WORKSPACE_ROOT ?? "/vercel/sandbox/workspace";
+}
+
+function getCommitsLogPath() {
+  return path.join(getWorkspaceRoot(), ".trace", "commits.jsonl");
+}
 
 interface CommitEntry {
   path: string;
@@ -19,14 +24,15 @@ interface CommitEntry {
 export async function appendCommitLog(
   filePath: string,
   action: CommitEntry["action"],
-  content: string,
+  content: string | Buffer,
   tool?: string,
   error?: string
 ) {
   const hash = createHash("sha256").update(content).digest("hex").slice(0, 12);
+  const workspaceRoot = getWorkspaceRoot();
 
   const entry: CommitEntry = {
-    path: filePath.replace(`${WORKSPACE_ROOT}/`, ""),
+    path: filePath.replace(`${workspaceRoot}/`, ""),
     action,
     hash,
     timestamp: new Date().toISOString(),
@@ -35,8 +41,9 @@ export async function appendCommitLog(
     error,
   };
 
-  await fs.mkdir(path.dirname(COMMITS_LOG), { recursive: true });
-  await fs.appendFile(COMMITS_LOG, JSON.stringify(entry) + "\n");
+  const commitsLogPath = getCommitsLogPath();
+  await fs.mkdir(path.dirname(commitsLogPath), { recursive: true });
+  await fs.appendFile(commitsLogPath, JSON.stringify(entry) + "\n");
 }
 
 export async function appendAuditLog(tool: string, input: unknown) {
@@ -46,7 +53,7 @@ export async function appendAuditLog(tool: string, input: unknown) {
     input: typeof input === "object" ? JSON.stringify(input) : String(input),
   };
 
-  const auditPath = path.join(WORKSPACE_ROOT, "logs", "audit.log");
+  const auditPath = path.join(getWorkspaceRoot(), "logs", "audit.log");
   await fs.mkdir(path.dirname(auditPath), { recursive: true });
   await fs.appendFile(auditPath, JSON.stringify(entry) + "\n");
 
@@ -59,8 +66,9 @@ export async function writeProgressHandover(result: {
   messages?: unknown[];
   exitCode?: number;
 }) {
-  const progressPath = path.join(WORKSPACE_ROOT, "progress", "claude-progress.md");
-  const lastRunPath = path.join(WORKSPACE_ROOT, "progress", "last-run.json");
+  const workspaceRoot = getWorkspaceRoot();
+  const progressPath = path.join(workspaceRoot, "progress", "claude-progress.md");
+  const lastRunPath = path.join(workspaceRoot, "progress", "last-run.json");
 
   const summary = `
 ## Run completed at ${new Date().toISOString()}
@@ -101,7 +109,7 @@ export async function writeProgressHandover(result: {
 
 export async function logTrajectoryStep(step: Record<string, unknown>) {
   const sessionId = process.env.SESSION_ID ?? "unknown";
-  const runPath = path.join(WORKSPACE_ROOT, ".trace", "runs", `${sessionId}.jsonl`);
+  const runPath = path.join(getWorkspaceRoot(), ".trace", "runs", `${sessionId}.jsonl`);
   await fs.mkdir(path.dirname(runPath), { recursive: true });
   await fs.appendFile(runPath, JSON.stringify(step) + "\n");
 

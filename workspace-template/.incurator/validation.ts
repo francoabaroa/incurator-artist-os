@@ -2,7 +2,9 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { SCHEMA_REGISTRY } from "./schemas";
 
-const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? "/vercel/sandbox/workspace";
+function getWorkspaceRoot() {
+  return process.env.WORKSPACE_ROOT ?? "/vercel/sandbox/workspace";
+}
 
 type ValidationResult =
   | { success: true }
@@ -17,7 +19,7 @@ export async function validateWorkspaceFiles(
   }
 
   try {
-    const fullPath = path.join(WORKSPACE_ROOT, relativePath);
+    const fullPath = path.join(getWorkspaceRoot(), relativePath);
     const content = await fs.readFile(fullPath, "utf-8");
     const data = JSON.parse(content);
 
@@ -40,7 +42,7 @@ export async function validateWorkspaceFiles(
 export async function validateAllWorkspaceFiles(): Promise<ValidationResult[]> {
   const results: ValidationResult[] = [];
   for (const relativePath of Object.keys(SCHEMA_REGISTRY)) {
-    const fullPath = path.join(WORKSPACE_ROOT, relativePath);
+    const fullPath = path.join(getWorkspaceRoot(), relativePath);
     try {
       await fs.access(fullPath);
       results.push(await validateWorkspaceFiles(relativePath));
@@ -65,7 +67,7 @@ export async function validateAndRollbackIfInvalid(
 
   if (!validationResult.success) {
     if (backupContent !== null) {
-      const fullPath = path.join(WORKSPACE_ROOT, relativePath);
+      const fullPath = path.join(getWorkspaceRoot(), relativePath);
       await writeFileFn(fullPath, backupContent);
       return { rolledBack: true, error: validationResult.error };
     }
