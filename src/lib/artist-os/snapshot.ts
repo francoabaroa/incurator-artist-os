@@ -12,7 +12,7 @@ export async function restoreBaseSnapshot(sandbox: Sandbox) {
   await sandbox.writeFiles([
     { path: "/vercel/sandbox/_base.tar.gz", content: Buffer.from(tarBytes) },
   ]);
-  await sandbox.runCommand({
+  const command = await sandbox.runCommand({
     cmd: "bash",
     args: [
       "-lc",
@@ -28,6 +28,9 @@ export async function restoreBaseSnapshot(sandbox: Sandbox) {
       ].join(" && "),
     ],
   });
+  if (command.exitCode !== 0) {
+    throw new Error(`Base snapshot restore failed with exit code ${command.exitCode}`);
+  }
 }
 
 export async function restoreArtistSnapshot(
@@ -46,20 +49,23 @@ export async function restoreArtistSnapshot(
   await sandbox.writeFiles([
     { path: "/vercel/sandbox/_artist.tar.gz", content: Buffer.from(tarBytes) },
   ]);
-  await sandbox.runCommand({
+  const command = await sandbox.runCommand({
     cmd: "bash",
     args: [
       "-lc",
       `tar -xzf /vercel/sandbox/_artist.tar.gz -C ${WORKSPACE_ROOT} && rm /vercel/sandbox/_artist.tar.gz`,
     ],
   });
+  if (command.exitCode !== 0) {
+    throw new Error(`Artist snapshot restore failed with exit code ${command.exitCode}`);
+  }
 }
 
 export async function exportArtistSnapshot(
   sandbox: Sandbox,
   artistId: string
 ): Promise<SnapshotManifest> {
-  await sandbox.runCommand({
+  const command = await sandbox.runCommand({
     cmd: "bash",
     args: [
       "-lc",
@@ -71,6 +77,9 @@ export async function exportArtistSnapshot(
       `tar -czf /vercel/sandbox/_export.tar.gz --exclude='.incurator' --exclude='.claude' --exclude='node_modules' --exclude='.git' -C ${WORKSPACE_ROOT} .`,
     ],
   });
+  if (command.exitCode !== 0) {
+    throw new Error(`Artist snapshot export failed with exit code ${command.exitCode}`);
+  }
 
   const tarBytes = await readSandboxFile(sandbox, "/vercel/sandbox/_export.tar.gz");
   // Cleanup to reduce disk usage in long-lived warm sandboxes
@@ -133,13 +142,16 @@ export async function downloadBlob(key: string): Promise<Uint8Array> {
 
 async function scaffoldNewArtist(sandbox: Sandbox, artistId: string) {
   // Ensure directories exist (base snapshot should have these, but be defensive)
-  await sandbox.runCommand({
+  const command = await sandbox.runCommand({
     cmd: "bash",
     args: [
       "-lc",
       `mkdir -p ${WORKSPACE_ROOT}/{profile,tasks,releases,brand,marketing,finances,contracts,logs,progress,.index,.trace/runs}`,
     ],
   });
+  if (command.exitCode !== 0) {
+    throw new Error(`Artist workspace scaffold failed with exit code ${command.exitCode}`);
+  }
 
   // Only personalize files that need the artistId - preserve template content from base snapshot
   // Files like progress/claude-progress.md, tasks/inbox.md, etc. come from workspace-template

@@ -33,7 +33,7 @@ Each item gets a separate commit after affected tests, type checking and lint. A
 - [x] 2026-10-07: Survey and existing-work commits; baseline tests/types/lint green.
 - [x] 2026-10-07: Prototype patch guard; four regressions fail before and pass after; types/lint pass.
 - [x] 2026-10-07: Redis reply validation; 10 affected tests and types/lint pass.
-- [ ] Snapshot exit checks.
+- [x] 2026-10-07: Snapshot exit checks; four reproduced failure cases now stop safely; eight affected tests and types/lint pass.
 - [ ] SSE chunk regression.
 - [ ] Component test discovery.
 - [ ] Full validation and final report.

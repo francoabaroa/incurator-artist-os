@@ -196,3 +196,35 @@ describe("exportArtistSnapshot", () => {
     expect(manifest.artist_id).toBe("artist_123");
   });
 });
+
+describe("snapshot command failures", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each(["base", "artist", "scaffold", "export"])(
+    "stops after a failed %s command", async (operation) => {
+      redisGet.mockReset();
+      redisSet.mockReset();
+      putMock.mockReset();
+      redisGet.mockResolvedValue(operation === "scaffold" ? null : "snapshots/artist/archive.tar.gz");
+      headMock.mockResolvedValue({ url: "https://blob.example.com/snapshot.tar.gz" });
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("archive")));
+      const sandbox = {
+        runCommand: vi.fn().mockResolvedValue({ exitCode: 2 }),
+        writeFiles: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue(Readable.from([Buffer.from("stale archive")])),
+      };
+      const typedSandbox = sandbox as unknown as import("@vercel/sandbox").Sandbox;
+      const run = operation === "base"
+        ? () => restoreBaseSnapshot(typedSandbox)
+        : operation === "export"
+          ? () => exportArtistSnapshot(typedSandbox, "artist_123")
+          : () => restoreArtistSnapshot(typedSandbox, "artist_123");
+
+      await expect(run()).rejects.toThrow(/exit code 2/);
+      expect(sandbox.readFile).not.toHaveBeenCalled();
+      expect(putMock).not.toHaveBeenCalled();
+      expect(redisSet).not.toHaveBeenCalled();
+      if (operation === "scaffold") expect(sandbox.writeFiles).not.toHaveBeenCalled();
+    }
+  );
+});
